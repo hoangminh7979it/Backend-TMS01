@@ -7,6 +7,8 @@ import com.transportation_management_system.tms01.entity.auth.User;
 import com.transportation_management_system.tms01.entity.customer.Customer;
 import com.transportation_management_system.tms01.entity.fleet.VehicleType;
 import com.transportation_management_system.tms01.entity.hrm.EmployeeType;
+import com.transportation_management_system.tms01.entity.shipment.Shipment;
+import com.transportation_management_system.tms01.entity.shipment.StatusEnum;
 import com.transportation_management_system.tms01.repository.auth.PermissionRepository;
 import com.transportation_management_system.tms01.repository.auth.RolePermissionRepository;
 import com.transportation_management_system.tms01.repository.auth.RoleRepository;
@@ -14,12 +16,15 @@ import com.transportation_management_system.tms01.repository.auth.UserRepository
 import com.transportation_management_system.tms01.repository.customer.CustomerRepository;
 import com.transportation_management_system.tms01.repository.fleet.VehicleTypeRepository;
 import com.transportation_management_system.tms01.repository.hrm.EmployeeTypeRepository;
+import com.transportation_management_system.tms01.repository.shipment.ShipmentRepository;
+import com.transportation_management_system.tms01.repository.shipment.StatusEnumRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -36,11 +41,13 @@ public class DataInitializer implements CommandLineRunner {
     private final EmployeeTypeRepository employeeTypeRepository;
     private final VehicleTypeRepository vehicleTypeRepository;
     private final CustomerRepository customerRepository;
+    private final ShipmentRepository shipmentRepository;
+    private final StatusEnumRepository statusEnumRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) throws Exception {
-        // 1. Khởi tạo Danh mục Quyền Hạn Mẫu theo bộ chuẩn CRUD (READ, CREATE, UPDATE, DELETE)
+        // 1. Khởi tạo Danh mục Quyền Hạn Mẫu theo bộ chuẩn CRUD
         initPermissions();
 
         // 2. Khởi tạo Loại Nhân Viên Mẫu
@@ -49,10 +56,16 @@ public class DataInitializer implements CommandLineRunner {
         // 3. Khởi tạo Loại Phương Tiện Mẫu
         initVehicleTypes();
 
-        // 4. Khởi tạo Khách Hàng Mẫu KH-001
+        // 4. Khởi tạo Trạng Thái Vận Chuyển Mẫu
+        initStatusEnums();
+
+        // 5. Khởi tạo Khách Hàng Mẫu KH-001
         initSampleCustomer();
 
-        // 5. Khởi tạo Vai trò Mặc định ADMIN nếu chưa có
+        // 6. Khởi tạo Đơn Hàng Vận Chuyển Mẫu
+        initSampleShipments();
+
+        // 7. Khởi tạo Vai trò Mặc định ADMIN nếu chưa có
         Role adminRole = roleRepository.findByRoleCode("ADMIN")
                 .orElseGet(() -> roleRepository.save(Role.builder()
                         .roleCode("ADMIN")
@@ -60,10 +73,10 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Quyền quản trị cao nhất hệ thống")
                         .build()));
 
-        // 6. Gán tất cả Quyền hạn cho ADMIN nếu chưa gán
+        // 8. Gán tất cả Quyền hạn cho ADMIN nếu chưa gán
         assignAllPermissionsToRole(adminRole);
 
-        // 7. Khởi tạo Tài khoản Mặc định 'admin' / 'Admin@6879' nếu chưa có
+        // 9. Khởi tạo Tài khoản Mặc định 'admin' / 'Admin@6879' nếu chưa có
         if (!userRepository.existsByUsername("admin")) {
             User adminUser = User.builder()
                     .username("admin")
@@ -80,6 +93,24 @@ public class DataInitializer implements CommandLineRunner {
 
             userRepository.save(adminUser);
             log.info(">>> Đã khởi tạo thành công tài khoản test: username='admin' | password='Admin@6879'");
+        }
+    }
+
+    private void initStatusEnums() {
+        createStatusEnumIfNotFound("CREATED", "Mới Tạo Đơn", "Đơn hàng mới được tiếp nhận chưa gán xe");
+        createStatusEnumIfNotFound("DISPATCHED", "Đã Điều Xe", "Đã điều động phương tiện và tài xế nhận đơn");
+        createStatusEnumIfNotFound("PICKED_UP", "Đang Vận Chuyển", "Đã bốc hàng và xe đang di chuyển trên lộ trình");
+        createStatusEnumIfNotFound("DELIVERED", "Đã Giao Hàng Thành Công", "Đã giao hàng đầy đủ và ký biên bản giao nhận");
+        createStatusEnumIfNotFound("CANCELLED", "Hủy Đơn Hàng", "Đơn hàng đã bị hủy bỏ");
+    }
+
+    private void createStatusEnumIfNotFound(String code, String name, String desc) {
+        if (!statusEnumRepository.existsByStatusEnumCode(code)) {
+            statusEnumRepository.save(StatusEnum.builder()
+                    .statusEnumCode(code)
+                    .statusEnumName(name)
+                    .description(desc)
+                    .build());
         }
     }
 
@@ -102,6 +133,58 @@ public class DataInitializer implements CommandLineRunner {
 
             customerRepository.save(customer);
             log.info(">>> Đã khởi tạo thành công khách hàng doanh nghiệp mẫu KH-001");
+        }
+    }
+
+    private void initSampleShipments() {
+        if (!shipmentRepository.existsByShipmentCode("DH-2026-001")) {
+            Customer customer = customerRepository.findByCustomerCodeAndIsDeleteFalse("KH-001").orElse(null);
+            StatusEnum statusPickedUp = statusEnumRepository.findByStatusEnumCode("PICKED_UP").orElse(null);
+
+            Shipment s1 = Shipment.builder()
+                    .shipmentCode("DH-2026-001")
+                    .cargoType("Linh kiện điện tử Samsung (12 Pallet)")
+                    .receiptPlace("Kho KCN Bắc Thăng Long, Đông Anh, Hà Nội")
+                    .deliveryPlace("Cảng Đình Vũ, Ngô Quyền, Hải Phòng")
+                    .weight(15.5)
+                    .dateOfReceipt(LocalDateTime.now().minusDays(1))
+                    .deliveryDate(LocalDateTime.now().plusDays(1))
+                    .revenue(new BigDecimal("25000000"))
+                    .incurredCosts(new BigDecimal("3500000"))
+                    .notes("Hàng điện tử dễ vỡ, giữ nhiệt độ thùng lạnh dưới 25 độ C")
+                    .customer(customer)
+                    .statusEnum(statusPickedUp)
+                    .isDelete(false)
+                    .createDate(LocalDateTime.now().minusDays(1))
+                    .build();
+
+            shipmentRepository.save(s1);
+            log.info(">>> Đã khởi tạo thành công đơn hàng mẫu DH-2026-001");
+        }
+
+        if (!shipmentRepository.existsByShipmentCode("DH-2026-002")) {
+            Customer customer = customerRepository.findByCustomerCodeAndIsDeleteFalse("KH-001").orElse(null);
+            StatusEnum statusCreated = statusEnumRepository.findByStatusEnumCode("CREATED").orElse(null);
+
+            Shipment s2 = Shipment.builder()
+                    .shipmentCode("DH-2026-002")
+                    .cargoType("Bao bì carton đóng gói (500 Thùng)")
+                    .receiptPlace("KCN VSIP Bắc Ninh")
+                    .deliveryPlace("Kho ICD Tân Cảng, Quận 9, TP. Hồ Chí Minh")
+                    .weight(8.0)
+                    .dateOfReceipt(LocalDateTime.now().plusDays(2))
+                    .deliveryDate(LocalDateTime.now().plusDays(5))
+                    .revenue(new BigDecimal("18500000"))
+                    .incurredCosts(new BigDecimal("2100000"))
+                    .notes("Yêu cầu xe mui bạt che chắn chống nước mưa")
+                    .customer(customer)
+                    .statusEnum(statusCreated)
+                    .isDelete(false)
+                    .createDate(LocalDateTime.now())
+                    .build();
+
+            shipmentRepository.save(s2);
+            log.info(">>> Đã khởi tạo thành công đơn hàng mẫu DH-2026-002");
         }
     }
 
