@@ -1,7 +1,10 @@
 package com.transportation_management_system.tms01.entity.auth;
 
+import com.transportation_management_system.tms01.entity.base.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "tms_users")
@@ -10,7 +13,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,6 +37,16 @@ public class User {
 
     @Column(name = "phone", length = 20)
     private String phone;
+
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
+
+    @Column(name = "work_start_time")
+    private LocalTime workStartTime;
+
+    @Column(name = "work_end_time")
+    private LocalTime workEndTime;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id")
