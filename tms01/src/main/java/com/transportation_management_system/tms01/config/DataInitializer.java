@@ -4,11 +4,13 @@ import com.transportation_management_system.tms01.entity.auth.Permission;
 import com.transportation_management_system.tms01.entity.auth.Role;
 import com.transportation_management_system.tms01.entity.auth.RolePermission;
 import com.transportation_management_system.tms01.entity.auth.User;
+import com.transportation_management_system.tms01.entity.fleet.VehicleType;
 import com.transportation_management_system.tms01.entity.hrm.EmployeeType;
 import com.transportation_management_system.tms01.repository.auth.PermissionRepository;
 import com.transportation_management_system.tms01.repository.auth.RolePermissionRepository;
 import com.transportation_management_system.tms01.repository.auth.RoleRepository;
 import com.transportation_management_system.tms01.repository.auth.UserRepository;
+import com.transportation_management_system.tms01.repository.fleet.VehicleTypeRepository;
 import com.transportation_management_system.tms01.repository.hrm.EmployeeTypeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +31,7 @@ public class DataInitializer implements CommandLineRunner {
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final EmployeeTypeRepository employeeTypeRepository;
+    private final VehicleTypeRepository vehicleTypeRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -39,7 +42,10 @@ public class DataInitializer implements CommandLineRunner {
         // 2. Khởi tạo Loại Nhân Viên Mẫu
         initEmployeeTypes();
 
-        // 3. Khởi tạo Vai trò Mặc định ADMIN nếu chưa có
+        // 3. Khởi tạo Loại Phương Tiện Mẫu
+        initVehicleTypes();
+
+        // 4. Khởi tạo Vai trò Mặc định ADMIN nếu chưa có
         Role adminRole = roleRepository.findByRoleCode("ADMIN")
                 .orElseGet(() -> roleRepository.save(Role.builder()
                         .roleCode("ADMIN")
@@ -47,10 +53,10 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Quyền quản trị cao nhất hệ thống")
                         .build()));
 
-        // 4. Gán tất cả Quyền hạn cho ADMIN nếu chưa gán
+        // 5. Gán tất cả Quyền hạn cho ADMIN nếu chưa gán
         assignAllPermissionsToRole(adminRole);
 
-        // 5. Khởi tạo Tài khoản Mặc định 'admin' / 'Admin@6879' nếu chưa có
+        // 6. Khởi tạo Tài khoản Mặc định 'admin' / 'Admin@6879' nếu chưa có
         if (!userRepository.existsByUsername("admin")) {
             User adminUser = User.builder()
                     .username("admin")
@@ -67,6 +73,24 @@ public class DataInitializer implements CommandLineRunner {
 
             userRepository.save(adminUser);
             log.info(">>> Đã khởi tạo thành công tài khoản test: username='admin' | password='Admin@6879'");
+        }
+    }
+
+    private void initVehicleTypes() {
+        createVehicleTypeIfNotFound("TRUCK_HEAD", "Xe Đầu Kéo Container", "Xe đầu kéo chuyên chở Rơ-moóc & Container 40ft/20ft");
+        createVehicleTypeIfNotFound("TRUCK_15T", "Xe Tải Heavy 15 Tấn", "Xe tải thùng kín / mui bạt 15 Tấn đường dài");
+        createVehicleTypeIfNotFound("TRUCK_8T", "Xe Tải Medium 8 Tấn", "Xe tải liên tỉnh 8 Tấn");
+        createVehicleTypeIfNotFound("TRUCK_3.5T", "Xe Tải Light 3.5 Tấn", "Xe tải nội thành 3.5 Tấn");
+        createVehicleTypeIfNotFound("VAN", "Xe Tải Van Giao Hàng Nhanh", "Xe tải van 1 Tấn chạy giờ cao điểm thành phố");
+    }
+
+    private void createVehicleTypeIfNotFound(String code, String name, String desc) {
+        if (!vehicleTypeRepository.existsByVehicleTypeCode(code)) {
+            vehicleTypeRepository.save(VehicleType.builder()
+                    .vehicleTypeCode(code)
+                    .vehicleTypeName(name)
+                    .description(desc)
+                    .build());
         }
     }
 
