@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,6 +25,7 @@ public class UserController {
     private final UserRepository userRepository;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('USER_WRITE') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody UserCreateRequest request) {
         UserResponse response = userService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -31,18 +33,21 @@ public class UserController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('USER_READ') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
         List<UserResponse> list = userService.getAllUsers();
         return ResponseEntity.ok(ApiResponse.ok("Lấy danh sách tài khoản thành công", list));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_READ') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable Long id) {
         UserResponse response = userService.getUserById(id);
         return ResponseEntity.ok(ApiResponse.ok("Lấy thông tin tài khoản thành công", response));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_WRITE') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> updateUser(
             @PathVariable Long id,
             @Valid @RequestBody UserUpdateRequest request) {
@@ -51,12 +56,14 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_WRITE') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return ResponseEntity.ok(ApiResponse.ok("Xóa tài khoản thành công"));
     }
 
     @PostMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> changePassword(
             Authentication authentication,
             @Valid @RequestBody ChangePasswordRequest request) {
@@ -66,12 +73,14 @@ public class UserController {
     }
 
     @PostMapping("/reset-password")
+    @PreAuthorize("hasAuthority('USER_WRITE') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         userService.resetPassword(request);
         return ResponseEntity.ok(ApiResponse.ok("Đặt lại mật khẩu thành công"));
     }
 
     @GetMapping("/{id}/check-active")
+    @PreAuthorize("hasAuthority('USER_READ') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> checkActive(@PathVariable Long id) {
         User user = userRepository.findByUserIdAndIsDeleteFalse(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản với ID: " + id));
@@ -86,6 +95,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}/check-working-hours")
+    @PreAuthorize("hasAuthority('USER_READ') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> checkWorkingHours(@PathVariable Long id) {
         User user = userRepository.findByUserIdAndIsDeleteFalse(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản với ID: " + id));
