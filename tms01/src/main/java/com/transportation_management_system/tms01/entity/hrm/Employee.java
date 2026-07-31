@@ -1,7 +1,10 @@
 package com.transportation_management_system.tms01.entity.hrm;
 
+import com.transportation_management_system.tms01.entity.base.BaseEntity;
+import com.transportation_management_system.tms01.entity.auth.User;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "tms_employees")
@@ -9,13 +12,16 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class Employee {
+@SuperBuilder
+public class Employee extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "employee_id")
     private Long employeeId;
+
+    @Column(name = "employee_code", nullable = false, unique = true, length = 50)
+    private String employeeCode;
 
     @Column(name = "firstname", length = 100)
     private String firstname;
@@ -41,4 +47,8 @@ public class Employee {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_type_id")
     private EmployeeType employeeType;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 }
