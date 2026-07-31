@@ -4,10 +4,12 @@ import com.transportation_management_system.tms01.entity.auth.Permission;
 import com.transportation_management_system.tms01.entity.auth.Role;
 import com.transportation_management_system.tms01.entity.auth.RolePermission;
 import com.transportation_management_system.tms01.entity.auth.User;
+import com.transportation_management_system.tms01.entity.hrm.EmployeeType;
 import com.transportation_management_system.tms01.repository.auth.PermissionRepository;
 import com.transportation_management_system.tms01.repository.auth.RolePermissionRepository;
 import com.transportation_management_system.tms01.repository.auth.RoleRepository;
 import com.transportation_management_system.tms01.repository.auth.UserRepository;
+import com.transportation_management_system.tms01.repository.hrm.EmployeeTypeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -26,6 +28,7 @@ public class DataInitializer implements CommandLineRunner {
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final EmployeeTypeRepository employeeTypeRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -33,7 +36,10 @@ public class DataInitializer implements CommandLineRunner {
         // 1. Khởi tạo Danh mục Quyền Hạn Mẫu theo bộ chuẩn CRUD (READ, CREATE, UPDATE, DELETE)
         initPermissions();
 
-        // 2. Khởi tạo Vai trò Mặc định ADMIN nếu chưa có
+        // 2. Khởi tạo Loại Nhân Viên Mẫu
+        initEmployeeTypes();
+
+        // 3. Khởi tạo Vai trò Mặc định ADMIN nếu chưa có
         Role adminRole = roleRepository.findByRoleCode("ADMIN")
                 .orElseGet(() -> roleRepository.save(Role.builder()
                         .roleCode("ADMIN")
@@ -41,10 +47,10 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Quyền quản trị cao nhất hệ thống")
                         .build()));
 
-        // 3. Gán tất cả Quyền hạn cho ADMIN nếu chưa gán
+        // 4. Gán tất cả Quyền hạn cho ADMIN nếu chưa gán
         assignAllPermissionsToRole(adminRole);
 
-        // 4. Khởi tạo Tài khoản Mặc định 'admin' / 'Admin@6879' nếu chưa có
+        // 5. Khởi tạo Tài khoản Mặc định 'admin' / 'Admin@6879' nếu chưa có
         if (!userRepository.existsByUsername("admin")) {
             User adminUser = User.builder()
                     .username("admin")
@@ -61,6 +67,25 @@ public class DataInitializer implements CommandLineRunner {
 
             userRepository.save(adminUser);
             log.info(">>> Đã khởi tạo thành công tài khoản test: username='admin' | password='Admin@6879'");
+        }
+    }
+
+    private void initEmployeeTypes() {
+        createEmployeeTypeIfNotFound("DRIVER", "Tài Xế Vận Tải", "Lái xe đầu kéo, xe tải đường dài");
+        createEmployeeTypeIfNotFound("CO_DRIVER", "Phụ Xe", "Phụ xe giao nhận hàng hóa");
+        createEmployeeTypeIfNotFound("COORDINATOR", "Điều Hành Vận Tải", "Điều phối xe và điều động chuyến hàng");
+        createEmployeeTypeIfNotFound("MECHANIC", "Kỹ Thuật / Bảo Dưỡng", "Sửa chữa, bảo dưỡng phương tiện");
+        createEmployeeTypeIfNotFound("ACCOUNTANT", "Kế Toán Vận Tải", "Kế toán chi phí, xăng dầu, lương chuyến");
+        createEmployeeTypeIfNotFound("OFFICER", "Nhân Viên Văn Phòng", "Nhân sự văn phòng và hành chính");
+    }
+
+    private void createEmployeeTypeIfNotFound(String code, String name, String desc) {
+        if (!employeeTypeRepository.existsByEmployeeTypeCode(code)) {
+            employeeTypeRepository.save(EmployeeType.builder()
+                    .employeeTypeCode(code)
+                    .employeeTypeName(name)
+                    .description(desc)
+                    .build());
         }
     }
 
