@@ -4,12 +4,14 @@ import com.transportation_management_system.tms01.entity.auth.Permission;
 import com.transportation_management_system.tms01.entity.auth.Role;
 import com.transportation_management_system.tms01.entity.auth.RolePermission;
 import com.transportation_management_system.tms01.entity.auth.User;
+import com.transportation_management_system.tms01.entity.customer.Customer;
 import com.transportation_management_system.tms01.entity.fleet.VehicleType;
 import com.transportation_management_system.tms01.entity.hrm.EmployeeType;
 import com.transportation_management_system.tms01.repository.auth.PermissionRepository;
 import com.transportation_management_system.tms01.repository.auth.RolePermissionRepository;
 import com.transportation_management_system.tms01.repository.auth.RoleRepository;
 import com.transportation_management_system.tms01.repository.auth.UserRepository;
+import com.transportation_management_system.tms01.repository.customer.CustomerRepository;
 import com.transportation_management_system.tms01.repository.fleet.VehicleTypeRepository;
 import com.transportation_management_system.tms01.repository.hrm.EmployeeTypeRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -32,6 +35,7 @@ public class DataInitializer implements CommandLineRunner {
     private final RolePermissionRepository rolePermissionRepository;
     private final EmployeeTypeRepository employeeTypeRepository;
     private final VehicleTypeRepository vehicleTypeRepository;
+    private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -45,7 +49,10 @@ public class DataInitializer implements CommandLineRunner {
         // 3. Khởi tạo Loại Phương Tiện Mẫu
         initVehicleTypes();
 
-        // 4. Khởi tạo Vai trò Mặc định ADMIN nếu chưa có
+        // 4. Khởi tạo Khách Hàng Mẫu KH-001
+        initSampleCustomer();
+
+        // 5. Khởi tạo Vai trò Mặc định ADMIN nếu chưa có
         Role adminRole = roleRepository.findByRoleCode("ADMIN")
                 .orElseGet(() -> roleRepository.save(Role.builder()
                         .roleCode("ADMIN")
@@ -53,10 +60,10 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Quyền quản trị cao nhất hệ thống")
                         .build()));
 
-        // 5. Gán tất cả Quyền hạn cho ADMIN nếu chưa gán
+        // 6. Gán tất cả Quyền hạn cho ADMIN nếu chưa gán
         assignAllPermissionsToRole(adminRole);
 
-        // 6. Khởi tạo Tài khoản Mặc định 'admin' / 'Admin@6879' nếu chưa có
+        // 7. Khởi tạo Tài khoản Mặc định 'admin' / 'Admin@6879' nếu chưa có
         if (!userRepository.existsByUsername("admin")) {
             User adminUser = User.builder()
                     .username("admin")
@@ -73,6 +80,28 @@ public class DataInitializer implements CommandLineRunner {
 
             userRepository.save(adminUser);
             log.info(">>> Đã khởi tạo thành công tài khoản test: username='admin' | password='Admin@6879'");
+        }
+    }
+
+    private void initSampleCustomer() {
+        if (!customerRepository.existsByCustomerCode("KH-001")) {
+            Customer customer = Customer.builder()
+                    .customerCode("KH-001")
+                    .firstname("Nguyễn")
+                    .lastname("Quang Minh")
+                    .companyName("Công ty TNHH Vận Tải & Logistics Việt Nam")
+                    .taxCode("0101234567")
+                    .email("contact@logisticsvietnam.com")
+                    .phone("0912345678")
+                    .address("Số 18 Phạm Hùng, Cầu Giấy, Hà Nội")
+                    .customerType("CORPORATE")
+                    .notes("Khách hàng VIP ký hợp đồng nguyên tắc năm 2026")
+                    .isDelete(false)
+                    .createDate(LocalDateTime.now())
+                    .build();
+
+            customerRepository.save(customer);
+            log.info(">>> Đã khởi tạo thành công khách hàng doanh nghiệp mẫu KH-001");
         }
     }
 
