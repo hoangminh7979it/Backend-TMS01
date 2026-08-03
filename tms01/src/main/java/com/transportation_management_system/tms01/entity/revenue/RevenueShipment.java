@@ -1,8 +1,9 @@
-package com.transportation_management_system.tms01.entity.finance;
+package com.transportation_management_system.tms01.entity.revenue;
 
 import com.transportation_management_system.tms01.entity.shipment.Shipment;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "tms_revenue_shipments")
@@ -10,7 +11,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class RevenueShipment {
 
     @Id

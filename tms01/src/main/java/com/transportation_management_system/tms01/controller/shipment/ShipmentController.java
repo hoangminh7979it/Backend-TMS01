@@ -8,11 +8,13 @@ import com.transportation_management_system.tms01.dto.shipment.StatusEnumRespons
 import com.transportation_management_system.tms01.service.shipment.ShipmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -76,6 +78,19 @@ public class ShipmentController {
         return ResponseEntity.ok(ApiResponse.ok("Lấy danh sách đơn hàng theo trạng thái thành công", list));
     }
 
+    /**
+     * Lấy danh sách đơn hàng của tài xế trong khoảng ngày - dùng cho popup tính lương
+     * GET /api/v1/shipments/by-employee?employeeId=1&startDate=2026-08-01&endDate=2026-08-31
+     */
+    @GetMapping("/by-employee")
+    @PreAuthorize("hasAuthority('SHIPMENT_READ') or hasRole('ADMIN') or hasAuthority('FINANCE_READ')")
+    public ResponseEntity<ApiResponse<List<ShipmentResponse>>> getShipmentsByEmployee(
+            @RequestParam Long employeeId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        List<ShipmentResponse> list = shipmentService.getShipmentsByEmployeeAndDateRange(employeeId, startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.ok("Lấy danh sách đơn hàng của tài xế thành công", list));
+    }
     // --- STATUS ENUM APIS ---
 
     @GetMapping("/statuses")
