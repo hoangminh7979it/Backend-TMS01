@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -228,6 +229,26 @@ public class ShipmentServiceImpl implements ShipmentService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy trạng thái với ID: " + id));
 
         statusEnumRepository.delete(status);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ShipmentResponse> getShipmentsByEmployeeAndDateRange(Long employeeId, LocalDate startDate, LocalDate endDate) {
+        LocalDateTime start = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime end   = endDate   != null ? endDate.atTime(23, 59, 59) : null;
+
+        List<Shipment> result;
+        if (start != null && end != null) {
+            result = shipmentRepository.findByEmployeeAndBothDates(employeeId, start, end);
+        } else if (start != null) {
+            result = shipmentRepository.findByEmployeeAndStartDate(employeeId, start);
+        } else if (end != null) {
+            result = shipmentRepository.findByEmployeeAndEndDate(employeeId, end);
+        } else {
+            result = shipmentRepository.findByEmployeeId(employeeId);
+        }
+
+        return result.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
     private ShipmentResponse mapToResponse(Shipment s) {

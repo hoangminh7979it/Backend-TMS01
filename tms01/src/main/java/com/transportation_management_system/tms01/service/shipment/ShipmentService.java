@@ -5,6 +5,7 @@ import com.transportation_management_system.tms01.dto.shipment.ShipmentResponse;
 import com.transportation_management_system.tms01.dto.shipment.StatusEnumRequest;
 import com.transportation_management_system.tms01.dto.shipment.StatusEnumResponse;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface ShipmentService {
@@ -30,4 +31,9 @@ public interface ShipmentService {
     StatusEnumResponse updateStatus(Long id, StatusEnumRequest request);
 
     void deleteStatus(Long id);
+
+    /**
+     * Lấy danh sách đơn hàng của tài xế trong khoảng kỳ lương
+     */
+    List<ShipmentResponse> getShipmentsByEmployeeAndDateRange(Long employeeId, LocalDate startDate, LocalDate endDate);
 }

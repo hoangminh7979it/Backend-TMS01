@@ -1,10 +1,12 @@
-package com.transportation_management_system.tms01.entity.finance;
+package com.transportation_management_system.tms01.entity.revenue;
 
 import com.transportation_management_system.tms01.entity.auth.User;
 import com.transportation_management_system.tms01.entity.base.BaseEntity;
+import com.transportation_management_system.tms01.entity.fleet.Vehicle;
 import com.transportation_management_system.tms01.entity.shipment.StatusEnum;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,7 +17,7 @@ import java.time.LocalDate;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class RevenueFinal extends BaseEntity {
 
     @Id
@@ -26,6 +28,16 @@ public class RevenueFinal extends BaseEntity {
     @Column(name = "revenue_code", nullable = false, unique = true, length = 50)
     private String revenueCode;
 
+    @Column(name = "title", length = 200)
+    private String title;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vehicle_id")
+    private Vehicle vehicle;
+
+    @Column(name = "license_plate", length = 50)
+    private String licensePlate;
+
     @Column(name = "start_date")
     private LocalDate startDate;
 
@@ -35,6 +47,9 @@ public class RevenueFinal extends BaseEntity {
     @Column(name = "total_shipment")
     private Integer totalShipment;
 
+    @Column(name = "gross_revenue", precision = 18, scale = 2)
+    private BigDecimal grossRevenue;
+
     @Column(name = "total_expense", precision = 18, scale = 2)
     private BigDecimal totalExpense;
 
@@ -43,6 +58,9 @@ public class RevenueFinal extends BaseEntity {
 
     @Column(name = "revenue_final_costs", precision = 18, scale = 2)
     private BigDecimal revenueFinalCosts;
+
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
