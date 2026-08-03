@@ -5,6 +5,7 @@ import com.transportation_management_system.tms01.entity.auth.Role;
 import com.transportation_management_system.tms01.entity.auth.RolePermission;
 import com.transportation_management_system.tms01.entity.auth.User;
 import com.transportation_management_system.tms01.entity.customer.Customer;
+import com.transportation_management_system.tms01.entity.expense.ExpenseType;
 import com.transportation_management_system.tms01.entity.fleet.VehicleType;
 import com.transportation_management_system.tms01.entity.hrm.EmployeeType;
 import com.transportation_management_system.tms01.entity.shipment.Shipment;
@@ -14,6 +15,7 @@ import com.transportation_management_system.tms01.repository.auth.RolePermission
 import com.transportation_management_system.tms01.repository.auth.RoleRepository;
 import com.transportation_management_system.tms01.repository.auth.UserRepository;
 import com.transportation_management_system.tms01.repository.customer.CustomerRepository;
+import com.transportation_management_system.tms01.repository.expense.ExpenseTypeRepository;
 import com.transportation_management_system.tms01.repository.fleet.VehicleTypeRepository;
 import com.transportation_management_system.tms01.repository.hrm.EmployeeTypeRepository;
 import com.transportation_management_system.tms01.repository.shipment.ShipmentRepository;
@@ -43,6 +45,7 @@ public class DataInitializer implements CommandLineRunner {
     private final CustomerRepository customerRepository;
     private final ShipmentRepository shipmentRepository;
     private final StatusEnumRepository statusEnumRepository;
+    private final ExpenseTypeRepository expenseTypeRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -59,13 +62,16 @@ public class DataInitializer implements CommandLineRunner {
         // 4. Khởi tạo Trạng Thái Vận Chuyển Mẫu
         initStatusEnums();
 
-        // 5. Khởi tạo Khách Hàng Mẫu KH-001
+        // 5. Khởi tạo Loại Chi Phí Mẫu
+        initExpenseTypes();
+
+        // 6. Khởi tạo Khách Hàng Mẫu KH-001
         initSampleCustomer();
 
-        // 6. Khởi tạo Đơn Hàng Vận Chuyển Mẫu
+        // 7. Khởi tạo Đơn Hàng Vận Chuyển Mẫu
         initSampleShipments();
 
-        // 7. Khởi tạo Vai trò Mặc định ADMIN nếu chưa có
+        // 8. Khởi tạo Vai trò Mặc định ADMIN nếu chưa có
         Role adminRole = roleRepository.findByRoleCode("ADMIN")
                 .orElseGet(() -> roleRepository.save(Role.builder()
                         .roleCode("ADMIN")
@@ -73,10 +79,10 @@ public class DataInitializer implements CommandLineRunner {
                         .description("Quyền quản trị cao nhất hệ thống")
                         .build()));
 
-        // 8. Gán tất cả Quyền hạn cho ADMIN nếu chưa gán
+        // 9. Gán tất cả Quyền hạn cho ADMIN nếu chưa gán
         assignAllPermissionsToRole(adminRole);
 
-        // 9. Khởi tạo Tài khoản Mặc định 'admin' / 'Admin@6879' nếu chưa có
+        // 10. Khởi tạo Tài khoản Mặc định 'admin' / 'Admin@6879' nếu chưa có
         if (!userRepository.existsByUsername("admin")) {
             User adminUser = User.builder()
                     .username("admin")
@@ -96,12 +102,31 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
+    private void initExpenseTypes() {
+        createExpenseTypeIfNotFound("FUEL", "Xăng Dầu Nhiên Liệu", "Chi phí mua dầu DO, xăng xe tải và xe đầu kéo");
+        createExpenseTypeIfNotFound("TOLL", "Phí Đường Bộ & Cầu Đường", "Chi phí mua vé trạm BOT, cầu đường và phí cao tốc");
+        createExpenseTypeIfNotFound("REPAIR", "Sửa Chữa & Bảo Dưỡng Xe", "Chi phí thay nhớt, bảo dưỡng định kỳ và sửa chữa thay thế phụ tùng");
+        createExpenseTypeIfNotFound("PARKING", "Phí Bến Bãi & Lưu Đêm", "Chi phí đỗ xe, lưu kho và dịch vụ bốc xếp bến bãi");
+        createExpenseTypeIfNotFound("POLICE", "Phí Sự Cố Tải Trọng", "Chi phí xử lý sự cố giao thông và cầu đường");
+        createExpenseTypeIfNotFound("OTHER", "Chi Phí Khác", "Các khoản chi phí phát sinh khác chưa có trong danh mục");
+    }
+
+    private void createExpenseTypeIfNotFound(String code, String name, String desc) {
+        if (!expenseTypeRepository.existsByExpenseTypeCode(code)) {
+            expenseTypeRepository.save(ExpenseType.builder()
+                    .expenseTypeCode(code)
+                    .expenseTypeName(name)
+                    .description(desc)
+                    .build());
+        }
+    }
+
     private void initStatusEnums() {
         createStatusEnumIfNotFound("CREATED", "Mới Tạo Đơn", "Đơn hàng mới được tiếp nhận chưa gán xe");
-        createStatusEnumIfNotFound("DISPATCHED", "Đã Điều Xe", "Đã điều động phương tiện và tài xế nhận đơn");
-        createStatusEnumIfNotFound("PICKED_UP", "Đang Vận Chuyển", "Đã bốc hàng và xe đang di chuyển trên lộ trình");
-        createStatusEnumIfNotFound("DELIVERED", "Đã Giao Hàng Thành Công", "Đã giao hàng đầy đủ và ký biên bản giao nhận");
-        createStatusEnumIfNotFound("CANCELLED", "Hủy Đơn Hàng", "Đơn hàng đã bị hủy bỏ");
+        createStatusEnumIfNotFound("DISPATCHED", "Đã Điều Xe", "Đã phân công xe tải và tài xế phụ trách");
+        createStatusEnumIfNotFound("PICKED_UP", "Đã Nhận Hàng", "Tài xế đã bốc hàng tại kho nhận và xuất phát");
+        createStatusEnumIfNotFound("DELIVERED", "Đã Giao Hàng", "Hàng hóa đã được giao thành công tới nơi nhận");
+        createStatusEnumIfNotFound("CANCELLED", "Đã Hủy Đơn", "Đơn hàng vận chuyển đã bị hủy bỏ");
     }
 
     private void createStatusEnumIfNotFound(String code, String name, String desc) {
@@ -116,103 +141,57 @@ public class DataInitializer implements CommandLineRunner {
 
     private void initSampleCustomer() {
         if (!customerRepository.existsByCustomerCode("KH-001")) {
-            Customer customer = Customer.builder()
+            Customer c = Customer.builder()
                     .customerCode("KH-001")
-                    .firstname("Nguyễn")
-                    .lastname("Quang Minh")
-                    .companyName("Công ty TNHH Vận Tải & Logistics Việt Nam")
+                    .firstname("Công Ty TNHH Logistics")
+                    .lastname("Toàn Cầu")
+                    .companyName("Công Ty TNHH Logistics Toàn Cầu (Global Freight)")
                     .taxCode("0101234567")
-                    .email("contact@logisticsvietnam.com")
-                    .phone("0912345678")
-                    .address("Số 18 Phạm Hùng, Cầu Giấy, Hà Nội")
+                    .email("contact@globalfreight.com.vn")
+                    .phone("02439998888")
+                    .address("Tầng 8, Tòa nhà Viettel, Cầu Giấy, Hà Nội")
                     .customerType("CORPORATE")
-                    .notes("Khách hàng VIP ký hợp đồng nguyên tắc năm 2026")
+                    .notes("Khách hàng VIP ký hợp đồng cước vận chuyển năm 2026")
                     .isDelete(false)
                     .createDate(LocalDateTime.now())
                     .build();
 
-            customerRepository.save(customer);
-            log.info(">>> Đã khởi tạo thành công khách hàng doanh nghiệp mẫu KH-001");
+            customerRepository.save(c);
         }
     }
 
     private void initSampleShipments() {
         if (!shipmentRepository.existsByShipmentCode("DH-2026-001")) {
             Customer customer = customerRepository.findByCustomerCodeAndIsDeleteFalse("KH-001").orElse(null);
-            StatusEnum statusPickedUp = statusEnumRepository.findByStatusEnumCode("PICKED_UP").orElse(null);
+            StatusEnum status = statusEnumRepository.findByStatusEnumCode("PICKED_UP").orElse(null);
 
-            Shipment s1 = Shipment.builder()
+            Shipment s = Shipment.builder()
                     .shipmentCode("DH-2026-001")
-                    .cargoType("Linh kiện điện tử Samsung (12 Pallet)")
-                    .receiptPlace("Kho KCN Bắc Thăng Long, Đông Anh, Hà Nội")
-                    .deliveryPlace("Cảng Đình Vũ, Ngô Quyền, Hải Phòng")
+                    .cargoType("Linh kiện điện tử Samsung (12 Pallet, Thùng carton)")
+                    .receiptPlace("Kho KCN Yên Phong, Bắc Ninh")
+                    .deliveryPlace("Cảng Đình Vũ, Hải Phòng")
                     .weight(15.5)
                     .dateOfReceipt(LocalDateTime.now().minusDays(1))
                     .deliveryDate(LocalDateTime.now().plusDays(1))
                     .revenue(new BigDecimal("25000000"))
                     .incurredCosts(new BigDecimal("3500000"))
-                    .notes("Hàng điện tử dễ vỡ, giữ nhiệt độ thùng lạnh dưới 25 độ C")
+                    .notes("Hàng điện tử cao cấp, bảo quản mui bạt chằng buộc chắc chắn")
                     .customer(customer)
-                    .statusEnum(statusPickedUp)
-                    .isDelete(false)
-                    .createDate(LocalDateTime.now().minusDays(1))
-                    .build();
-
-            shipmentRepository.save(s1);
-            log.info(">>> Đã khởi tạo thành công đơn hàng mẫu DH-2026-001");
-        }
-
-        if (!shipmentRepository.existsByShipmentCode("DH-2026-002")) {
-            Customer customer = customerRepository.findByCustomerCodeAndIsDeleteFalse("KH-001").orElse(null);
-            StatusEnum statusCreated = statusEnumRepository.findByStatusEnumCode("CREATED").orElse(null);
-
-            Shipment s2 = Shipment.builder()
-                    .shipmentCode("DH-2026-002")
-                    .cargoType("Bao bì carton đóng gói (500 Thùng)")
-                    .receiptPlace("KCN VSIP Bắc Ninh")
-                    .deliveryPlace("Kho ICD Tân Cảng, Quận 9, TP. Hồ Chí Minh")
-                    .weight(8.0)
-                    .dateOfReceipt(LocalDateTime.now().plusDays(2))
-                    .deliveryDate(LocalDateTime.now().plusDays(5))
-                    .revenue(new BigDecimal("18500000"))
-                    .incurredCosts(new BigDecimal("2100000"))
-                    .notes("Yêu cầu xe mui bạt che chắn chống nước mưa")
-                    .customer(customer)
-                    .statusEnum(statusCreated)
+                    .statusEnum(status)
                     .isDelete(false)
                     .createDate(LocalDateTime.now())
                     .build();
 
-            shipmentRepository.save(s2);
-            log.info(">>> Đã khởi tạo thành công đơn hàng mẫu DH-2026-002");
-        }
-    }
-
-    private void initVehicleTypes() {
-        createVehicleTypeIfNotFound("TRUCK_HEAD", "Xe Đầu Kéo Container", "Xe đầu kéo chuyên chở Rơ-moóc & Container 40ft/20ft");
-        createVehicleTypeIfNotFound("TRUCK_15T", "Xe Tải Heavy 15 Tấn", "Xe tải thùng kín / mui bạt 15 Tấn đường dài");
-        createVehicleTypeIfNotFound("TRUCK_8T", "Xe Tải Medium 8 Tấn", "Xe tải liên tỉnh 8 Tấn");
-        createVehicleTypeIfNotFound("TRUCK_3.5T", "Xe Tải Light 3.5 Tấn", "Xe tải nội thành 3.5 Tấn");
-        createVehicleTypeIfNotFound("VAN", "Xe Tải Van Giao Hàng Nhanh", "Xe tải van 1 Tấn chạy giờ cao điểm thành phố");
-    }
-
-    private void createVehicleTypeIfNotFound(String code, String name, String desc) {
-        if (!vehicleTypeRepository.existsByVehicleTypeCode(code)) {
-            vehicleTypeRepository.save(VehicleType.builder()
-                    .vehicleTypeCode(code)
-                    .vehicleTypeName(name)
-                    .description(desc)
-                    .build());
+            shipmentRepository.save(s);
         }
     }
 
     private void initEmployeeTypes() {
-        createEmployeeTypeIfNotFound("DRIVER", "Tài Xế Vận Tải", "Lái xe đầu kéo, xe tải đường dài");
-        createEmployeeTypeIfNotFound("CO_DRIVER", "Phụ Xe", "Phụ xe giao nhận hàng hóa");
-        createEmployeeTypeIfNotFound("COORDINATOR", "Điều Hành Vận Tải", "Điều phối xe và điều động chuyến hàng");
-        createEmployeeTypeIfNotFound("MECHANIC", "Kỹ Thuật / Bảo Dưỡng", "Sửa chữa, bảo dưỡng phương tiện");
-        createEmployeeTypeIfNotFound("ACCOUNTANT", "Kế Toán Vận Tải", "Kế toán chi phí, xăng dầu, lương chuyến");
-        createEmployeeTypeIfNotFound("OFFICER", "Nhân Viên Văn Phòng", "Nhân sự văn phòng và hành chính");
+        createEmployeeTypeIfNotFound("DRIVER", "Lái Xe Vận Tải", "Đội ngũ tài xế điều khiển xe tải và xe đầu kéo");
+        createEmployeeTypeIfNotFound("CO_DRIVER", "Phụ Xe / Bốc Xếp", "Hỗ trợ bốc dỡ hàng hóa và áp tải");
+        createEmployeeTypeIfNotFound("DISPATCHER", "Điều Độ Xe", "Quản lý và sắp xếp lịch trình chạy xe");
+        createEmployeeTypeIfNotFound("MECHANIC", "Thợ Kỹ Thuật / Bảo Dưỡng", "Bảo dưỡng và sửa chữa phương tiện");
+        createEmployeeTypeIfNotFound("OFFICE", "Nhân Viên Văn Phòng / Kế Toán", "Khối hỗ trợ hành chính tài chính");
     }
 
     private void createEmployeeTypeIfNotFound(String code, String name, String desc) {
@@ -225,18 +204,35 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void initPermissions() {
-        // 1. Quản lý Đơn Hàng
-        createPermissionIfNotFound("SHIPMENT_READ", "Xem danh sách và chi tiết đơn hàng", "Quản lý Đơn Hàng");
-        createPermissionIfNotFound("SHIPMENT_CREATE", "Tạo mới đơn hàng vận chuyển", "Quản lý Đơn Hàng");
-        createPermissionIfNotFound("SHIPMENT_UPDATE", "Cập nhật tiến độ và lộ trình đơn hàng", "Quản lý Đơn Hàng");
-        createPermissionIfNotFound("SHIPMENT_DELETE", "Hủy hoặc xóa đơn hàng", "Quản lý Đơn Hàng");
+    private void initVehicleTypes() {
+        createVehicleTypeIfNotFound("TRUCK_LIGHT", "Xe Tải Nhẹ (1.5 - 3.5 Tấn)", "Phù hợp giao nhận nội thành và kho vệ tinh");
+        createVehicleTypeIfNotFound("TRUCK_HEAVY", "Xe Tải Nặng (8 - 15 Tấn)", "Chuyên chở hàng liên tỉnh tải trọng lớn");
+        createVehicleTypeIfNotFound("CONTAINER_HEAD", "Xe Đầu Kéo Container", "Vận chuyển container đường dài và Cảng biển");
+        createVehicleTypeIfNotFound("REFRIGERATED", "Xe Tải Lạnh Specialized", "Vận chuyển thực phẩm và hàng hóa đông lạnh");
+    }
 
-        // 2. Quản lý Đội Xe
-        createPermissionIfNotFound("VEHICLE_READ", "Xem danh sách phương tiện và hạn đăng kiểm", "Quản lý Đội Xe");
-        createPermissionIfNotFound("VEHICLE_CREATE", "Khai báo phương tiện vận tải mới", "Quản lý Đội Xe");
-        createPermissionIfNotFound("VEHICLE_UPDATE", "Cập nhật thông tin xe và lịch bảo dưỡng", "Quản lý Đội Xe");
-        createPermissionIfNotFound("VEHICLE_DELETE", "Xóa hoặc ngưng vận hành phương tiện", "Quản lý Đội Xe");
+    private void createVehicleTypeIfNotFound(String code, String name, String desc) {
+        if (!vehicleTypeRepository.existsByVehicleTypeCode(code)) {
+            vehicleTypeRepository.save(VehicleType.builder()
+                    .vehicleTypeCode(code)
+                    .vehicleTypeName(name)
+                    .description(desc)
+                    .build());
+        }
+    }
+
+    private void initPermissions() {
+        // 1. Quản lý Vận Chuyển / Đơn Hàng
+        createPermissionIfNotFound("SHIPMENT_READ", "Xem danh sách đơn hàng vận chuyển", "Quản lý Vận Chuyển");
+        createPermissionIfNotFound("SHIPMENT_CREATE", "Tạo mới đơn hàng vận chuyển", "Quản lý Vận Chuyển");
+        createPermissionIfNotFound("SHIPMENT_UPDATE", "Cập nhật thông tin và trạng thái đơn hàng", "Quản lý Vận Chuyển");
+        createPermissionIfNotFound("SHIPMENT_DELETE", "Hủy hoặc xóa đơn hàng vận chuyển", "Quản lý Vận Chuyển");
+
+        // 2. Quản lý Khách Hàng
+        createPermissionIfNotFound("CUSTOMER_READ", "Xem hồ sơ khách hàng và đối tác", "Quản lý Khách Hàng");
+        createPermissionIfNotFound("CUSTOMER_CREATE", "Thêm mới hồ sơ khách hàng", "Quản lý Khách Hàng");
+        createPermissionIfNotFound("CUSTOMER_UPDATE", "Cập nhật thông tin đối tác khách hàng", "Quản lý Khách Hàng");
+        createPermissionIfNotFound("CUSTOMER_DELETE", "Xóa hồ sơ khách hàng", "Quản lý Khách Hàng");
 
         // 3. Quản lý Nhân Sự
         createPermissionIfNotFound("EMPLOYEE_READ", "Xem hồ sơ nhân sự và tài xế", "Quản lý Nhân Sự");

@@ -2,6 +2,7 @@ package com.transportation_management_system.tms01.entity.expense;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -12,7 +13,7 @@ import java.time.LocalDate;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class ExpenseDetail {
 
     @Id
@@ -36,6 +37,9 @@ public class ExpenseDetail {
 
     @Column(name = "expense_detail_costs", precision = 18, scale = 2)
     private BigDecimal expenseDetailCosts;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 
     @Column(name = "date")
     private LocalDate date;
