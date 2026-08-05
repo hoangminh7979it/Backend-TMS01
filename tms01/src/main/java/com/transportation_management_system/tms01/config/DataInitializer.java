@@ -30,6 +30,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -206,59 +207,72 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initPermissions() {
-        createPermissionIfNotFound("SHIPMENT_READ", "Xem danh sach don hang van chuyen", "Quan ly Van Chuyen");
-        createPermissionIfNotFound("SHIPMENT_CREATE", "Tao moi don hang van chuyen", "Quan ly Van Chuyen");
-        createPermissionIfNotFound("SHIPMENT_UPDATE", "Cap nhat thong tin va trang thai don hang", "Quan ly Van Chuyen");
-        createPermissionIfNotFound("SHIPMENT_DELETE", "Huy hoac xoa don hang van chuyen", "Quan ly Van Chuyen");
+        createPermissionIfNotFound("SHIPMENT_READ", "Xem danh sach don hang van chuyen", "Quan ly Van Chuyen", "READ");
+        createPermissionIfNotFound("SHIPMENT_CREATE", "Tao moi don hang van chuyen", "Quan ly Van Chuyen", "CREATE");
+        createPermissionIfNotFound("SHIPMENT_UPDATE", "Cap nhat thong tin va trang thai don hang", "Quan ly Van Chuyen", "UPDATE");
+        createPermissionIfNotFound("SHIPMENT_DELETE", "Huy hoac xoa don hang van chuyen", "Quan ly Van Chuyen", "DELETE");
 
-        createPermissionIfNotFound("CUSTOMER_READ", "Xem ho so khach hang va doi tac", "Quan ly Khach Hang");
-        createPermissionIfNotFound("CUSTOMER_CREATE", "Them moi ho so khach hang", "Quan ly Khach Hang");
-        createPermissionIfNotFound("CUSTOMER_UPDATE", "Cap nhat thong tin doi tac khach hang", "Quan ly Khach Hang");
-        createPermissionIfNotFound("CUSTOMER_DELETE", "Xoa ho so khach hang", "Quan ly Khach Hang");
+        createPermissionIfNotFound("CUSTOMER_READ", "Xem ho so khach hang va doi tac", "Quan ly Khach Hang", "READ");
+        createPermissionIfNotFound("CUSTOMER_CREATE", "Them moi ho so khach hang", "Quan ly Khach Hang", "CREATE");
+        createPermissionIfNotFound("CUSTOMER_UPDATE", "Cap nhat thong tin doi tac khach hang", "Quan ly Khach Hang", "UPDATE");
+        createPermissionIfNotFound("CUSTOMER_DELETE", "Xoa ho so khach hang", "Quan ly Khach Hang", "DELETE");
 
-        createPermissionIfNotFound("EMPLOYEE_READ", "Xem ho so nhan su va tai xe", "Quan ly Nhan Su");
-        createPermissionIfNotFound("EMPLOYEE_CREATE", "Them moi ho so nhan su", "Quan ly Nhan Su");
-        createPermissionIfNotFound("EMPLOYEE_UPDATE", "Cap nhat thong tin nhan su va phan ca", "Quan ly Nhan Su");
-        createPermissionIfNotFound("EMPLOYEE_DELETE", "Sa thai hoac xoa ho so nhan su", "Quan ly Nhan Su");
+        createPermissionIfNotFound("EMPLOYEE_READ", "Xem ho so nhan su va tai xe", "Quan ly Nhan Su", "READ");
+        createPermissionIfNotFound("EMPLOYEE_CREATE", "Them moi ho so nhan su", "Quan ly Nhan Su", "CREATE");
+        createPermissionIfNotFound("EMPLOYEE_UPDATE", "Cap nhat thong tin nhan su va phan ca", "Quan ly Nhan Su", "UPDATE");
+        createPermissionIfNotFound("EMPLOYEE_DELETE", "Sa thai hoac xoa ho so nhan su", "Quan ly Nhan Su", "DELETE");
 
-        createPermissionIfNotFound("EXPENSE_READ", "Xem danh sach phieu chi phi phat sinh", "Quan ly Chi Phi");
-        createPermissionIfNotFound("EXPENSE_CREATE", "Tao phieu chi phi nhien lieu, cau duong", "Quan ly Chi Phi");
-        createPermissionIfNotFound("EXPENSE_UPDATE", "Cap nhat va phe duyiet phieu chi phi", "Quan ly Chi Phi");
-        createPermissionIfNotFound("EXPENSE_DELETE", "Huy hoac xoa phieu chi phi", "Quan ly Chi Phi");
+        createPermissionIfNotFound("EXPENSE_READ", "Xem danh sach phieu chi phi phat sinh", "Quan ly Chi Phi", "READ");
+        createPermissionIfNotFound("EXPENSE_CREATE", "Tao phieu chi phi nhien lieu, cau duong", "Quan ly Chi Phi", "CREATE");
+        createPermissionIfNotFound("EXPENSE_UPDATE", "Cap nhat va phe duyiet phieu chi phi", "Quan ly Chi Phi", "UPDATE");
+        createPermissionIfNotFound("EXPENSE_DELETE", "Huy hoac xoa phieu chi phi", "Quan ly Chi Phi", "DELETE");
 
-        createPermissionIfNotFound("FINANCE_READ", "Xem bao cao doanh thu va bang luong", "Quan ly Tai Chinh");
-        createPermissionIfNotFound("FINANCE_CREATE", "Lap ky tinh luong va chung tu thu chi", "Quan ly Tai Chinh");
-        createPermissionIfNotFound("FINANCE_UPDATE", "Dieu chinh chot bang luong va doanh thu", "Quan ly Tai Chinh");
-        createPermissionIfNotFound("FINANCE_DELETE", "Huy ky chung tu tai chinh", "Quan ly Tai Chinh");
+        createPermissionIfNotFound("FINANCE_READ", "Xem bao cao doanh thu va bang luong", "Quan ly Tai Chinh", "READ");
+        createPermissionIfNotFound("FINANCE_CREATE", "Lap ky tinh luong va chung tu thu chi", "Quan ly Tai Chinh", "CREATE");
+        createPermissionIfNotFound("FINANCE_UPDATE", "Dieu chinh chot bang luong va doanh thu", "Quan ly Tai Chinh", "UPDATE");
+        createPermissionIfNotFound("FINANCE_DELETE", "Huy ky chung tu tai chinh", "Quan ly Tai Chinh", "DELETE");
 
-        createPermissionIfNotFound("USER_READ", "Xem danh sach tai khoan nguoi dung", "Quan ly Nguoi Dung");
-        createPermissionIfNotFound("USER_CREATE", "Tao moi tai khoan truy cap he thong", "Quan ly Nguoi Dung");
-        createPermissionIfNotFound("USER_UPDATE", "Cap nhat tai khoan, khoa hoac reset mat khau", "Quan ly Nguoi Dung");
-        createPermissionIfNotFound("USER_DELETE", "Xoa tai khoan nguoi dung", "Quan ly Nguoi Dung");
+        createPermissionIfNotFound("USER_READ", "Xem danh sach tai khoan nguoi dung", "Quan ly Nguoi Dung", "READ");
+        createPermissionIfNotFound("USER_CREATE", "Tao moi tai khoan truy cap he thong", "Quan ly Nguoi Dung", "CREATE");
+        createPermissionIfNotFound("USER_UPDATE", "Cap nhat tai khoan, khoa hoac reset mat khau", "Quan ly Nguoi Dung", "UPDATE");
+        createPermissionIfNotFound("USER_DELETE", "Xoa tai khoan nguoi dung", "Quan ly Nguoi Dung", "DELETE");
 
-        createPermissionIfNotFound("ROLE_READ", "Xem ma tran phan quyen va danh sach vai tro", "Quan ly Phan Quyen");
-        createPermissionIfNotFound("ROLE_CREATE", "Tao moi vai tro nguoi dung", "Quan ly Phan Quyen");
-        createPermissionIfNotFound("ROLE_UPDATE", "Cap nhat va luu ma tran phan quyen", "Quan ly Phan Quyen");
-        createPermissionIfNotFound("ROLE_DELETE", "Xoa vai tro khoi he thong", "Quan ly Phan Quyen");
+        createPermissionIfNotFound("ROLE_READ", "Xem ma tran phan quyen va danh sach vai tro", "Quan ly Phan Quyen", "READ");
+        createPermissionIfNotFound("ROLE_CREATE", "Tao moi vai tro nguoi dung", "Quan ly Phan Quyen", "CREATE");
+        createPermissionIfNotFound("ROLE_UPDATE", "Cap nhat va luu ma tran phan quyen", "Quan ly Phan Quyen", "UPDATE");
+        createPermissionIfNotFound("ROLE_DELETE", "Xoa vai tro khoi he thong", "Quan ly Phan Quyen", "DELETE");
+
+        createPermissionIfNotFound("SYSTEM_FEATURE_READ", "Xem danh sach tính nang he thong", "Cai Dat He Thong", "READ");
+        createPermissionIfNotFound("SYSTEM_FEATURE_CREATE", "Khai bao tinh nang he thong moi", "Cai Dat He Thong", "CREATE");
+        createPermissionIfNotFound("SYSTEM_FEATURE_UPDATE", "Cap nhat va cau hinh tinh nang", "Cai Dat He Thong", "UPDATE");
+        createPermissionIfNotFound("SYSTEM_FEATURE_DELETE", "Xoa tinh nang khoi he thong", "Cai Dat He Thong", "DELETE");
     }
 
-    private void createPermissionIfNotFound(String code, String name, String desc) {
-        if (!permissionRepository.existsByPermissionCode(code)) {
+    private void createPermissionIfNotFound(String code, String name, String group, String action) {
+        Optional<Permission> opt = permissionRepository.findByPermissionCode(code);
+        if (opt.isEmpty()) {
             permissionRepository.save(Permission.builder()
                     .permissionCode(code)
                     .permissionName(name)
-                    .description(desc)
+                    .resourceGroup(group)
+                    .actionType(action)
+                    .description(name)
                     .build());
+        } else {
+            Permission p = opt.get();
+            p.setResourceGroup(group);
+            p.setActionType(action);
+            permissionRepository.save(p);
         }
     }
 
     private void assignAllPermissionsToRole(Role role) {
         List<Permission> allPermissions = permissionRepository.findAll();
-        for (Permission p : allPermissions) {
-            if (!rolePermissionRepository.existsByRole_RoleIdAndPermission_PermissionId(role.getRoleId(), p.getPermissionId())) {
+        for (Permission perm : allPermissions) {
+            if (!rolePermissionRepository.existsByRole_RoleIdAndPermission_PermissionId(role.getRoleId(), perm.getPermissionId())) {
                 rolePermissionRepository.save(RolePermission.builder()
                         .role(role)
-                        .permission(p)
+                        .permission(perm)
                         .build());
             }
         }
