@@ -23,6 +23,12 @@ public class Permission {
     @Column(name = "permission_name", nullable = false, length = 150)
     private String permissionName;
 
+    @Column(name = "resource_group", length = 100)
+    private String resourceGroup;
+
+    @Column(name = "action_type", length = 50)
+    private String actionType;
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 }
