@@ -4,22 +4,20 @@ import com.transportation_management_system.tms01.entity.auth.Permission;
 import com.transportation_management_system.tms01.entity.auth.Role;
 import com.transportation_management_system.tms01.entity.auth.RolePermission;
 import com.transportation_management_system.tms01.entity.auth.User;
-import com.transportation_management_system.tms01.entity.customer.Customer;
 import com.transportation_management_system.tms01.entity.expense.ExpenseType;
 import com.transportation_management_system.tms01.entity.fleet.VehicleType;
 import com.transportation_management_system.tms01.entity.hrm.EmployeeType;
-import com.transportation_management_system.tms01.entity.shipment.Shipment;
 import com.transportation_management_system.tms01.entity.shipment.StatusEnum;
+
 import com.transportation_management_system.tms01.repository.auth.PermissionRepository;
 import com.transportation_management_system.tms01.repository.auth.RolePermissionRepository;
 import com.transportation_management_system.tms01.repository.auth.RoleRepository;
 import com.transportation_management_system.tms01.repository.auth.UserRepository;
-import com.transportation_management_system.tms01.repository.customer.CustomerRepository;
 import com.transportation_management_system.tms01.repository.expense.ExpenseTypeRepository;
 import com.transportation_management_system.tms01.repository.fleet.VehicleTypeRepository;
 import com.transportation_management_system.tms01.repository.hrm.EmployeeTypeRepository;
-import com.transportation_management_system.tms01.repository.shipment.ShipmentRepository;
 import com.transportation_management_system.tms01.repository.shipment.StatusEnumRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -43,11 +41,10 @@ public class DataInitializer implements CommandLineRunner {
     private final RolePermissionRepository rolePermissionRepository;
     private final EmployeeTypeRepository employeeTypeRepository;
     private final VehicleTypeRepository vehicleTypeRepository;
-    private final CustomerRepository customerRepository;
-    private final ShipmentRepository shipmentRepository;
     private final StatusEnumRepository statusEnumRepository;
     private final ExpenseTypeRepository expenseTypeRepository;
     private final PasswordEncoder passwordEncoder;
+
 
     @Override
     public void run(String... args) throws Exception {
@@ -56,8 +53,7 @@ public class DataInitializer implements CommandLineRunner {
         initVehicleTypes();
         initStatusEnums();
         initExpenseTypes();
-        initSampleCustomer();
-        initSampleShipments();
+
 
         Role adminRole = roleRepository.findByRoleCode("ADMIN")
                 .orElseGet(() -> roleRepository.save(Role.builder()
@@ -89,7 +85,9 @@ public class DataInitializer implements CommandLineRunner {
 
     private void initExpenseTypes() {
         createExpenseTypeIfNotFound("FUEL", "Xang Dau Nhien Lieu", "Chi phi mua dau DO, xang xe tai va xe dau keo");
-        createExpenseTypeIfNotFound("TOLL", "Phi Duong Bo & Cau Duong", "Chi phi mua ve tram BOT, cau duong va phi cao toc");
+        createExpenseTypeIfNotFound("TOLL", "Phí Đường Bộ & Cầu Đường", "Chi phí mua vé trạm BOT, cầu đường và phí cao tốc");
+
+
         createExpenseTypeIfNotFound("REPAIR", "Sua Chua & Bao Duong Xe", "Chi phi thay nhot, bao duong dinh ky va sua chua thay the phu tung");
         createExpenseTypeIfNotFound("PARKING", "Phi Ben Bai & Luu Dem", "Chi phi do xe, luu kho va dich vu boc xep ben bai");
         createExpenseTypeIfNotFound("POLICE", "Phi Su Co Tai Trong", "Chi phi xu ly su co giao thong va cau duong");
@@ -124,54 +122,9 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void initSampleCustomer() {
-        if (!customerRepository.existsByCustomerCode("KH-001")) {
-            Customer c = Customer.builder()
-                    .customerCode("KH-001")
-                    .firstname("Cong Ty TNHH Logistics")
-                    .lastname("Toan Cau")
-                    .companyName("Cong Ty TNHH Logistics Toan Cau (Global Freight)")
-                    .taxCode("0101234567")
-                    .email("contact@globalfreight.com.vn")
-                    .phone("02439998888")
-                    .address("Tang 8, Toa nha Viettel, Cau Giay, Ha Noi")
-                    .customerType("CORPORATE")
-                    .notes("Khach hang VIP ky hop dong cuoc van chuyen nam 2026")
-                    .isDelete(false)
-                    .createDate(LocalDateTime.now())
-                    .build();
-
-            customerRepository.save(c);
-        }
-    }
-
-    private void initSampleShipments() {
-        if (!shipmentRepository.existsByShipmentCode("DH-2026-001")) {
-            Customer customer = customerRepository.findByCustomerCodeAndIsDeleteFalse("KH-001").orElse(null);
-            StatusEnum status = statusEnumRepository.findByStatusEnumCode("PICKED_UP").orElse(null);
-
-            Shipment s = Shipment.builder()
-                    .shipmentCode("DH-2026-001")
-                    .cargoType("Linh kien dien tu Samsung (12 Pallet, Thung carton)")
-                    .receiptPlace("Kho KCN Yen Phong, Bac Ninh")
-                    .deliveryPlace("Cang Dinh Vu, Hai Phong")
-                    .weight(15.5)
-                    .dateOfReceipt(LocalDateTime.now().minusDays(1))
-                    .deliveryDate(LocalDateTime.now().plusDays(1))
-                    .revenue(new BigDecimal("25000000"))
-                    .incurredCosts(new BigDecimal("3500000"))
-                    .notes("Hang dien tu cao cap, bao quan mui bat chang buoc chac chan")
-                    .customer(customer)
-                    .statusEnum(status)
-                    .isDelete(false)
-                    .createDate(LocalDateTime.now())
-                    .build();
-
-            shipmentRepository.save(s);
-        }
-    }
 
     private void initEmployeeTypes() {
+
         createEmployeeTypeIfNotFound("DRIVER", "Lai Xe Van Tai", "Doi ngu tai xe dieu khien xe tai va xe dau keo");
         createEmployeeTypeIfNotFound("CO_DRIVER", "Phu Xe / Boc Xep", "Ho tro boc do hang hoa va ap tai");
         createEmployeeTypeIfNotFound("DISPATCHER", "Dieu Do Xe", "Quan ly va sap xep lich trinh chay xe");

@@ -170,7 +170,9 @@ public class SalaryServiceImpl implements SalaryService {
         // Cập nhật danh sách phương tiện: xóa cũ, lưu mới
         if (request.getVehicleIds() != null) {
             salaryVehicleRepository.deleteBySalaryMain_SalaryId(id);
+            salaryVehicleRepository.flush();
             request.getVehicleIds().stream().distinct().forEach(vId -> {
+
                 vehicleRepository.findByIdAndIsDeleteFalse(vId).ifPresent(v -> {
                     SalaryVehicle sv = SalaryVehicle.builder()
                             .salaryMain(updatedSalary)
