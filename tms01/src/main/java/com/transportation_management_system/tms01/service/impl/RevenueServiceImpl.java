@@ -51,6 +51,14 @@ public class RevenueServiceImpl implements RevenueService {
                 .map(e -> e.getTotalExpense() != null ? e.getTotalExpense() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // Cộng chi phí phát sinh từ tất cả các chuyến hàng
+        BigDecimal totalShipmentIncurredCosts = allShipments.stream()
+                .map(s -> s.getIncurredCosts() != null ? s.getIncurredCosts() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        totalExpenses = totalExpenses.add(totalShipmentIncurredCosts);
+
+
         List<Salary> allSalaries = salaryRepository.findAllByIsDeleteFalse();
         BigDecimal totalSalariesPaid = allSalaries.stream()
                 .map(s -> s.getSalaryCosts() != null ? s.getSalaryCosts() : BigDecimal.ZERO)
@@ -103,9 +111,17 @@ public class RevenueServiceImpl implements RevenueService {
                 .map(e -> e.getTotalExpense() != null ? e.getTotalExpense() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // Cộng thêm chi phí phát sinh từ các chuyến hàng liên quan (Shipment Incurred Costs)
+        BigDecimal shipmentIncurredCostsSum = linkedShipments.stream()
+                .map(s -> s.getIncurredCosts() != null ? s.getIncurredCosts() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        totalExpenses = totalExpenses.add(shipmentIncurredCostsSum);
+
         if (request.getTotalExpense() != null && request.getTotalExpense().compareTo(BigDecimal.ZERO) > 0) {
             totalExpenses = request.getTotalExpense();
         }
+
 
         BigDecimal totalSalary = salaryRepository.findAllByIsDeleteFalse().stream()
                 .map(s -> s.getSalaryCosts() != null ? s.getSalaryCosts() : BigDecimal.ZERO)
@@ -179,9 +195,28 @@ public class RevenueServiceImpl implements RevenueService {
         if (request.getRevenueFinalCosts() != null) rf.setRevenueFinalCosts(request.getRevenueFinalCosts());
         if (request.getNotes() != null) rf.setNotes(request.getNotes());
 
-        revenueFinalRepository.save(rf);
-        return mapRevenueToResponse(rf);
+        final RevenueFinal updatedRf = revenueFinalRepository.save(rf);
+
+        // Nếu có shipmentIds gửi lên khi cập nhật, làm mới các liên kết chuyến hàng
+        if (request.getShipmentIds() != null) {
+            revenueShipmentRepository.deleteByRevenueFinal_RevenueId(id);
+            revenueShipmentRepository.flush();
+            if (!request.getShipmentIds().isEmpty()) {
+
+                List<Shipment> shipments = shipmentRepository.findAllById(request.getShipmentIds());
+                for (Shipment s : shipments) {
+                    RevenueShipment rs = RevenueShipment.builder()
+                            .revenueFinal(updatedRf)
+                            .shipment(s)
+                            .build();
+                    revenueShipmentRepository.save(rs);
+                }
+            }
+        }
+
+        return mapRevenueToResponse(updatedRf);
     }
+
 
     @Override
     @Transactional(readOnly = true)

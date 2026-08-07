@@ -62,8 +62,10 @@ public class RoleServiceImpl implements RoleService {
 
         if (request.getPermissionIds() != null) {
             rolePermissionRepository.deleteByRole_RoleId(id);
+            rolePermissionRepository.flush();
             saveRolePermissions(role, request.getPermissionIds());
         }
+
 
         return getRoleById(id);
     }
@@ -119,8 +121,10 @@ public class RoleServiceImpl implements RoleService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy vai trò với ID: " + request.getRoleId()));
 
         rolePermissionRepository.deleteByRole_RoleId(role.getRoleId());
+        rolePermissionRepository.flush();
 
         if (request.getPermissionIds() != null && !request.getPermissionIds().isEmpty()) {
+
             saveRolePermissions(role, request.getPermissionIds());
         }
 
