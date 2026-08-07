@@ -172,9 +172,11 @@ public class ExpenseServiceImpl implements ExpenseService {
         // Update details if provided
         if (request.getDetails() != null) {
             expenseDetailRepository.deleteByExpense_ExpenseId(expense.getExpenseId());
+            expenseDetailRepository.flush();
             int detailIdx = 1;
             BigDecimal calculatedTotal = BigDecimal.ZERO;
             for (ExpenseDetailRequest dtReq : request.getDetails()) {
+
                 ExpenseType et = null;
                 if (dtReq.getExpenseTypeId() != null) {
                     et = expenseTypeRepository.findById(dtReq.getExpenseTypeId()).orElse(null);

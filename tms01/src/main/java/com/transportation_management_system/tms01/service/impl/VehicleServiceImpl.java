@@ -72,10 +72,17 @@ public class VehicleServiceImpl implements VehicleService {
 
         if (request.getVehicleCode() != null) vehicle.setVehicleCode(request.getVehicleCode());
         if (request.getName() != null) vehicle.setName(request.getName());
+        if (request.getLicensePlate() != null && !request.getLicensePlate().equalsIgnoreCase(vehicle.getLicensePlate())) {
+            if (vehicleRepository.existsByLicensePlate(request.getLicensePlate())) {
+                throw new IllegalArgumentException("Biển số xe '" + request.getLicensePlate() + "' đã tồn tại trong hệ thống");
+            }
+            vehicle.setLicensePlate(request.getLicensePlate());
+        }
         if (request.getPayloadCapacity() != null) vehicle.setPayloadCapacity(request.getPayloadCapacity());
         if (request.getStatus() != null) vehicle.setStatus(request.getStatus());
         if (request.getInspectionExpirationDate() != null) vehicle.setInspectionExpirationDate(request.getInspectionExpirationDate());
         if (request.getInsuranceExpirationDate() != null) vehicle.setInsuranceExpirationDate(request.getInsuranceExpirationDate());
+
 
         if (request.getVehicleTypeId() != null) {
             VehicleType type = vehicleTypeRepository.findById(request.getVehicleTypeId())
