@@ -41,11 +41,14 @@ public class UserServiceImpl implements UserService {
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy vai trò với ID: " + request.getRoleId()));
         }
 
-        String encodedDefaultPassword = passwordEncoder.encode(DEFAULT_PASSWORD);
+        String rawPassword = (request.getPassword() != null && !request.getPassword().isBlank())
+                ? request.getPassword()
+                : DEFAULT_PASSWORD;
+        String encodedPassword = passwordEncoder.encode(rawPassword);
 
         User user = User.builder()
                 .username(request.getUsername())
-                .password(encodedDefaultPassword)
+                .password(encodedPassword)
                 .firstname(request.getFirstname())
                 .lastname(request.getLastname())
                 .email(request.getEmail())
@@ -55,6 +58,7 @@ public class UserServiceImpl implements UserService {
                 .workStartTime(request.getWorkStartTime())
                 .workEndTime(request.getWorkEndTime())
                 .build();
+
 
         user = userRepository.save(user);
         return mapToResponse(user);
@@ -80,6 +84,14 @@ public class UserServiceImpl implements UserService {
 
         if (request.getWorkStartTime() != null) user.setWorkStartTime(request.getWorkStartTime());
         if (request.getWorkEndTime() != null) user.setWorkEndTime(request.getWorkEndTime());
+
+        // Cập nhật mật khẩu mới nếu được cung cấp
+        if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
+            if (request.getNewPassword().length() < 4) {
+                throw new IllegalArgumentException("Mật khẩu mới phải có ít nhất 4 ký tự");
+            }
+            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        }
 
         if (request.getRoleId() != null) {
             Role role = roleRepository.findById(request.getRoleId())

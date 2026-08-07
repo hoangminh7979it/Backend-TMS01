@@ -19,4 +19,7 @@ public class UserUpdateRequest {
 
     private LocalTime workStartTime;
     private LocalTime workEndTime;
+
+    /** Nếu không muốn đổi mật khẩu, để trống hoặc gửi null */
+    private String newPassword;
 }

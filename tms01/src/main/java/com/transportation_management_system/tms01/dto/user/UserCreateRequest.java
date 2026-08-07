@@ -12,6 +12,9 @@ public class UserCreateRequest {
     @NotBlank(message = "Tên đăng nhập không được để trống")
     private String username;
 
+    @NotBlank(message = "Mật khẩu không được để trống")
+    private String password;
+
     private String firstname;
     private String lastname;
 
@@ -20,6 +23,7 @@ public class UserCreateRequest {
 
     private String phone;
     private Long roleId;
+
 
     private LocalTime workStartTime;
     private LocalTime workEndTime;
