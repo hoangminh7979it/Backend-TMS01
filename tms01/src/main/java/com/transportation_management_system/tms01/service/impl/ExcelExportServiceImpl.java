@@ -36,6 +36,7 @@ public class ExcelExportServiceImpl implements ExcelExportService {
     private final SalaryRepository salaryRepository;
     private final SalaryShipmentRepository salaryShipmentRepository;
     private final RevenueFinalRepository revenueFinalRepository;
+    private final com.transportation_management_system.tms01.repository.revenue.RevenueShipmentRepository revenueShipmentRepository;
 
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -267,6 +268,12 @@ public class ExcelExportServiceImpl implements ExcelExportService {
     @Override
     @Transactional(readOnly = true)
     public byte[] exportSalaryById(Long salaryId) {
+        return exportSalaryById(salaryId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportSalaryById(Long salaryId, org.springframework.web.multipart.MultipartFile templateFile) {
         Salary salary = salaryRepository.findBySalaryIdAndIsDeleteFalse(salaryId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bảng lương với ID: " + salaryId));
 
@@ -274,9 +281,10 @@ public class ExcelExportServiceImpl implements ExcelExportService {
 
         BigDecimal tripPct = salary.getTripSalaryPercentage() != null ? salary.getTripSalaryPercentage() : BigDecimal.ZERO;
 
-        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+        try (Workbook workbook = getOrCreateWorkbook(templateFile); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
-            Sheet sheet = workbook.createSheet("Phiếu Lương");
+            Sheet sheet = createUniqueSheet(workbook, "Phiếu Lương " + salary.getSalaryCode());
+
             CellStyle headerStyle = createHeaderStyle(workbook);
             CellStyle sectionStyle = createSectionStyle(workbook);
             CellStyle dataStyle = createDataStyle(workbook);
@@ -461,6 +469,259 @@ public class ExcelExportServiceImpl implements ExcelExportService {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportRevenueById(Long revenueId) {
+        return exportRevenueById(revenueId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportRevenueById(Long revenueId, org.springframework.web.multipart.MultipartFile templateFile) {
+        RevenueFinal revenue = revenueFinalRepository.findById(revenueId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy báo cáo doanh thu với ID: " + revenueId));
+
+        List<com.transportation_management_system.tms01.entity.revenue.RevenueShipment> revenueShipments = 
+                revenueShipmentRepository.findByRevenueFinal_RevenueId(revenueId);
+
+        // Fetch detailed Expenses and Salaries within period / vehicle
+        Long vId = revenue.getVehicle() != null ? revenue.getVehicle().getId() : null;
+        LocalDate start = revenue.getStartDate();
+        LocalDate end = revenue.getEndDate();
+
+        List<Expense> detailedExpenses = expenseRepository.findAll().stream()
+                .filter(e -> e.getExpenseDate() != null)
+                .filter(e -> start == null || !e.getExpenseDate().toLocalDate().isBefore(start))
+                .filter(e -> end == null || !e.getExpenseDate().toLocalDate().isAfter(end))
+                .filter(e -> vId == null || (e.getVehicle() != null && e.getVehicle().getId().equals(vId)) || (e.getVehicleLicensePlate() != null && revenue.getLicensePlate() != null && e.getVehicleLicensePlate().equalsIgnoreCase(revenue.getLicensePlate())))
+                .collect(Collectors.toList());
+
+
+        List<Salary> detailedSalaries = salaryRepository.findAllByIsDeleteFalse().stream()
+                .filter(s -> s.getStartDate() != null)
+                .filter(s -> start == null || !s.getStartDate().isBefore(start))
+                .filter(s -> end == null || !s.getEndDate().isAfter(end))
+                .collect(Collectors.toList());
+
+        try (Workbook workbook = getOrCreateWorkbook(templateFile); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = createUniqueSheet(workbook, "Báo Cáo Doanh Thu " + revenue.getRevenueCode());
+
+            CellStyle titleStyle        = createTitleStyle(workbook);
+            CellStyle sectionStyle      = createSectionStyle(workbook);
+            CellStyle headerStyle       = createHeaderStyle(workbook);
+            CellStyle dataStyle         = createDataStyle(workbook);
+            CellStyle currencyStyle     = createCurrencyStyle(workbook);
+            CellStyle summaryLabelStyle = createSummaryLabelStyle(workbook);
+            CellStyle totalStyle        = createTotalStyle(workbook);
+            CellStyle altRowStyle       = createAltRowStyle(workbook);
+            CellStyle altCurrStyle      = createAltCurrencyStyle(workbook);
+            CellStyle deductStyle       = createDeductStyle(workbook);
+
+            // ===== TIÊU ĐỀ FILE =====
+            Row tRow = sheet.createRow(0);
+            Cell tCell = tRow.createCell(0);
+            tCell.setCellValue("BÁO CÁO CHỐT DOANH THU & LỢI NHUẬN RÒNG KỲ");
+            tCell.setCellStyle(titleStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, 7));
+
+            // ===== PHẦN 1: THÔNG TIN CHUNG BÁO CÁO DOANH THU =====
+            Row sec1Row = sheet.createRow(2);
+            Cell sec1 = sec1Row.createCell(0);
+            sec1.setCellValue("PHẦN 1 — THÔNG TIN CHUNG CHỨNG TỪ DOANH THU");
+            sec1.setCellStyle(sectionStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(2, 2, 0, 7));
+
+            String vehicleInfo = revenue.getLicensePlate() != null ? revenue.getLicensePlate() : "Tất cả phương tiện";
+            if (revenue.getVehicle() != null && revenue.getVehicle().getName() != null) {
+                vehicleInfo += " (" + revenue.getVehicle().getName() + ")";
+            }
+
+            String[][] info = {
+                {"Mã Báo Cáo Doanh Thu:", revenue.getRevenueCode() != null ? revenue.getRevenueCode() : ""},
+                {"Tiêu Đề Báo Cáo:",       revenue.getTitle() != null ? revenue.getTitle() : ""},
+                {"Phương Tiện Vận Hành:",  vehicleInfo},
+                {"Kỳ Doanh Thu:",          (revenue.getStartDate() != null ? revenue.getStartDate().format(DATE_FORMATTER) : "") + " — " + (revenue.getEndDate() != null ? revenue.getEndDate().format(DATE_FORMATTER) : "")},
+                {"Tổng Số Đơn Hàng:",      revenue.getTotalShipment() != null ? String.valueOf(revenue.getTotalShipment()) : "0"},
+                {"Ghi Chú Đánh Giá:",      revenue.getNotes() != null ? revenue.getNotes() : ""},
+            };
+
+            int r = 3;
+            for (String[] rowData : info) {
+                Row ir = sheet.createRow(r++);
+                Cell lbl = ir.createCell(0); lbl.setCellValue(rowData[0]); lbl.setCellStyle(headerStyle);
+                Cell val = ir.createCell(1); val.setCellValue(rowData[1]); val.setCellStyle(dataStyle);
+                sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(r-1, r-1, 1, 7));
+            }
+
+            // ===== PHẦN 2: DANH SÁCH ĐƠN HÀNG TRONG KỲ =====
+            int sec2Start = r + 1;
+            Row sec2Row = sheet.createRow(sec2Start);
+            Cell sec2 = sec2Row.createCell(0);
+            sec2.setCellValue("PHẦN 2 — DANH SÁCH ĐƠN HÀNG VẬN CHUYỂN TRONG KỲ (" + revenueShipments.size() + " đơn hàng)");
+            sec2.setCellStyle(sectionStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(sec2Start, sec2Start, 0, 7));
+
+            String[] shipHeaders = {"STT", "MÃ ĐƠN HÀNG", "KHÁCH HÀNG", "NƠI NHẬN", "NƠI GIAO", "XE VẬN CHUYỂN", "TÀI XẾ", "DOANH THU CƯỚC (VND)"};
+            Row shipHeaderRow = sheet.createRow(sec2Start + 1);
+            for (int i = 0; i < shipHeaders.length; i++) {
+                Cell c = shipHeaderRow.createCell(i);
+                c.setCellValue(shipHeaders[i]);
+                c.setCellStyle(headerStyle);
+            }
+
+            int shipRowIdx = sec2Start + 2;
+            for (int i = 0; i < revenueShipments.size(); i++) {
+                Shipment s = revenueShipments.get(i).getShipment();
+                Row row = sheet.createRow(shipRowIdx++);
+                boolean alt = (i % 2 == 1);
+                CellStyle rowDs = alt ? altRowStyle  : dataStyle;
+                CellStyle rowCs = alt ? altCurrStyle : currencyStyle;
+
+                String custName = s.getCustomer() != null ? (s.getCustomer().getCompanyName() != null ? s.getCustomer().getCompanyName() : s.getCustomer().getFirstname() + " " + s.getCustomer().getLastname()) : "-";
+                String plate = s.getVehicle() != null ? s.getVehicle().getLicensePlate() : "-";
+                String driver = s.getEmployee() != null ? (s.getEmployee().getFirstname() + " " + s.getEmployee().getLastname()) : "-";
+
+                row.createCell(0).setCellValue(i + 1); row.getCell(0).setCellStyle(rowDs);
+                row.createCell(1).setCellValue(s.getShipmentCode() != null ? s.getShipmentCode() : ""); row.getCell(1).setCellStyle(rowDs);
+                row.createCell(2).setCellValue(custName); row.getCell(2).setCellStyle(rowDs);
+                row.createCell(3).setCellValue(s.getReceiptPlace() != null ? s.getReceiptPlace() : "-"); row.getCell(3).setCellStyle(rowDs);
+                row.createCell(4).setCellValue(s.getDeliveryPlace() != null ? s.getDeliveryPlace() : "-"); row.getCell(4).setCellStyle(rowDs);
+                row.createCell(5).setCellValue(plate); row.getCell(5).setCellStyle(rowDs);
+                row.createCell(6).setCellValue(driver); row.getCell(6).setCellStyle(rowDs);
+
+                Cell revCell = row.createCell(7);
+                revCell.setCellValue(s.getRevenue() != null ? s.getRevenue().doubleValue() : 0.0);
+                revCell.setCellStyle(rowCs);
+            }
+
+            // ===== PHẦN 3: CHI TIẾT CÁC KHOẢN CHI PHÍ VẬN HÀNH ĐỘI XE IN KỲ =====
+            int sec3Start = shipRowIdx + 1;
+            Row sec3Row = sheet.createRow(sec3Start);
+            Cell sec3 = sec3Row.createCell(0);
+            sec3.setCellValue("PHẦN 3 — CHI TIẾT CÁC PHIẾU CHI PHÍ VẬN HÀNH TRONG KỲ (" + detailedExpenses.size() + " phiếu chi)");
+            sec3.setCellStyle(sectionStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(sec3Start, sec3Start, 0, 7));
+
+            String[] expHeaders = {"STT", "MÃ PHIẾU CHI", "TÊN CHỨNG TỪ", "NGÀY CHI", "BIỂN SỐ XE", "LÁI XE PHỤ TRÁCH", "DIỄN GIẢI / GHI CHÚ", "TỔNG CHI PHÍ (VND)"};
+            Row expHeaderRow = sheet.createRow(sec3Start + 1);
+            for (int i = 0; i < expHeaders.length; i++) {
+                Cell c = expHeaderRow.createCell(i);
+                c.setCellValue(expHeaders[i]);
+                c.setCellStyle(headerStyle);
+            }
+
+            int expRowIdx = sec3Start + 2;
+            for (int i = 0; i < detailedExpenses.size(); i++) {
+                Expense exp = detailedExpenses.get(i);
+                Row row = sheet.createRow(expRowIdx++);
+                boolean alt = (i % 2 == 1);
+                CellStyle rowDs = alt ? altRowStyle  : dataStyle;
+                CellStyle rowCs = alt ? altCurrStyle : deductStyle;
+
+                String expPlate = exp.getVehicleLicensePlate() != null ? exp.getVehicleLicensePlate() : (exp.getVehicle() != null ? exp.getVehicle().getLicensePlate() : "-");
+                String expDriver = exp.getEmployee() != null ? (exp.getEmployee().getFirstname() + " " + exp.getEmployee().getLastname()) : "-";
+
+                row.createCell(0).setCellValue(i + 1); row.getCell(0).setCellStyle(rowDs);
+                row.createCell(1).setCellValue(exp.getExpenseCode() != null ? exp.getExpenseCode() : ""); row.getCell(1).setCellStyle(rowDs);
+                row.createCell(2).setCellValue(exp.getTitle() != null ? exp.getTitle() : ""); row.getCell(2).setCellStyle(rowDs);
+                row.createCell(3).setCellValue(exp.getExpenseDate() != null ? exp.getExpenseDate().format(DATE_FORMATTER) : "-"); row.getCell(3).setCellStyle(rowDs);
+                row.createCell(4).setCellValue(expPlate); row.getCell(4).setCellStyle(rowDs);
+                row.createCell(5).setCellValue(expDriver); row.getCell(5).setCellStyle(rowDs);
+                row.createCell(6).setCellValue(exp.getNotes() != null ? exp.getNotes() : ""); row.getCell(6).setCellStyle(rowDs);
+
+                Cell expCell = row.createCell(7);
+                expCell.setCellValue(exp.getTotalExpense() != null ? exp.getTotalExpense().doubleValue() : 0.0);
+                expCell.setCellStyle(rowCs);
+            }
+
+            // ===== PHẦN 4: CHI TIẾT CÁC BẢNG LƯƠNG NHÂN SỰ VẬN TẢI IN KỲ =====
+            int sec4Start = expRowIdx + 1;
+            Row sec4Row = sheet.createRow(sec4Start);
+            Cell sec4 = sec4Row.createCell(0);
+            sec4.setCellValue("PHẦN 4 — CHI TIẾT BẢNG LƯƠNG NHÂN SỰ & TÀI XẾ TRONG KỲ (" + detailedSalaries.size() + " phiếu lương)");
+            sec4.setCellStyle(sectionStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(sec4Start, sec4Start, 0, 7));
+
+            String[] salHeaders = {"STT", "MÃ BẢNG LƯƠNG", "NHÂN SỰ / TÀI XẾ", "MÃ NHÂN VIÊN", "KỲ TÍNH LƯƠNG", "SỐ NGÀY CÔNG", "SỐ CHUYẾN THƯỞNG", "LƯƠNG THỰC NHẬN (VND)"};
+            Row salHeaderRow = sheet.createRow(sec4Start + 1);
+            for (int i = 0; i < salHeaders.length; i++) {
+                Cell c = salHeaderRow.createCell(i);
+                c.setCellValue(salHeaders[i]);
+                c.setCellStyle(headerStyle);
+            }
+
+            int salRowIdx = sec4Start + 2;
+            for (int i = 0; i < detailedSalaries.size(); i++) {
+                Salary sal = detailedSalaries.get(i);
+                Row row = sheet.createRow(salRowIdx++);
+                boolean alt = (i % 2 == 1);
+                CellStyle rowDs = alt ? altRowStyle  : dataStyle;
+                CellStyle rowCs = alt ? altCurrStyle : deductStyle;
+
+                String empName = sal.getEmployee() != null ? (sal.getEmployee().getFirstname() + " " + sal.getEmployee().getLastname()) : "-";
+                String period = (sal.getStartDate() != null ? sal.getStartDate().format(DATE_FORMATTER) : "") + " - " + (sal.getEndDate() != null ? sal.getEndDate().format(DATE_FORMATTER) : "");
+
+                row.createCell(0).setCellValue(i + 1); row.getCell(0).setCellStyle(rowDs);
+                row.createCell(1).setCellValue(sal.getSalaryCode() != null ? sal.getSalaryCode() : ""); row.getCell(1).setCellStyle(rowDs);
+                row.createCell(2).setCellValue(empName); row.getCell(2).setCellStyle(rowDs);
+                row.createCell(3).setCellValue(sal.getEmployeeCode() != null ? sal.getEmployeeCode() : ""); row.getCell(3).setCellStyle(rowDs);
+                row.createCell(4).setCellValue(period); row.getCell(4).setCellStyle(rowDs);
+                row.createCell(5).setCellValue(sal.getWorkDaysCount() != null ? sal.getWorkDaysCount() : 0); row.getCell(5).setCellStyle(rowDs);
+                row.createCell(6).setCellValue(sal.getTotalShipmentCount() != null ? sal.getTotalShipmentCount() : 0); row.getCell(6).setCellStyle(rowDs);
+
+                Cell salCell = row.createCell(7);
+                salCell.setCellValue(sal.getSalaryCosts() != null ? sal.getSalaryCosts().doubleValue() : 0.0);
+                salCell.setCellStyle(rowCs);
+            }
+
+            // ===== PHẦN 5: ĐỐI TRỪ DOANH THU & CHI PHÍ VẬN HÀNH =====
+            int sec5Start = salRowIdx + 1;
+            Row sec5Row = sheet.createRow(sec5Start);
+            Cell sec5 = sec5Row.createCell(0);
+            sec5.setCellValue("PHẦN 5 — ĐỐI TRỪ TỔNG DOANH THU GROSS, CHI PHÍ VẬN HÀNH & QUỸ LƯƠNG");
+            sec5.setCellStyle(sectionStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(sec5Start, sec5Start, 0, 7));
+
+            Object[][] summaryRows = {
+                {"TỔNG DOANH THU CƯỚC GROSS (+):",          revenue.getGrossRevenue(),  currencyStyle},
+                {"TỔNG CHI PHÍ VẬN HÀNH ĐỘI XE (-):",        revenue.getTotalExpense(),  deductStyle},
+                {"TỔNG QUỸ LƯƠNG NHÂN SỰ VẬN TẢI (-):",      revenue.getTotalSalary(),   deductStyle},
+            };
+
+            int totalRowIdx = sec5Start + 1;
+            for (Object[] sRow : summaryRows) {
+                Row tr = sheet.createRow(totalRowIdx++);
+                Cell lbl = tr.createCell(0); lbl.setCellValue((String)sRow[0]); lbl.setCellStyle(summaryLabelStyle);
+                sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(totalRowIdx-1, totalRowIdx-1, 0, 6));
+                Cell val = tr.createCell(7);
+                val.setCellValue(sRow[1] instanceof BigDecimal ? ((BigDecimal)sRow[1]).doubleValue() : 0.0);
+                val.setCellStyle((CellStyle)sRow[2]);
+            }
+
+            // Dòng Lợi Nhuận Thuần Ròng Chốt Kỳ
+            Row grandTotalRow = sheet.createRow(totalRowIdx);
+            Cell gtLabel = grandTotalRow.createCell(0);
+            gtLabel.setCellValue("→ LỢI NHUẬN THUẦN RÒNG CHỐT KỲ (NET PROFIT):");
+            gtLabel.setCellStyle(totalStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(totalRowIdx, totalRowIdx, 0, 6));
+            Cell gtVal = grandTotalRow.createCell(7);
+            gtVal.setCellValue(revenue.getRevenueFinalCosts() != null ? revenue.getRevenueFinalCosts().doubleValue() : 0.0);
+            gtVal.setCellStyle(totalStyle);
+
+            for (int i = 0; i <= 7; i++) sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(2, 8000); // KHÁCH HÀNG / TÊN PHIẾU
+            sheet.setColumnWidth(3, 9000); // NƠI NHẬN / NGÀY / MÃ NV
+            sheet.setColumnWidth(4, 9000); // NƠI GIAO / BIỂN SỐ XE
+
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (Exception e) {
+            log.error("Lỗi khi xuất Excel Báo cáo doanh thu theo ID [{}]: ", revenueId, e);
+            throw new RuntimeException("Lỗi khi xuất file Excel báo cáo doanh thu: " + e.getMessage());
+        }
+    }
+
+
     // ==================== HELPER: XSSFColor ====================
     private org.apache.poi.xssf.usermodel.XSSFColor rgb(byte r, byte g, byte b) {
         return new org.apache.poi.xssf.usermodel.XSSFColor(new byte[]{r, g, b}, null);
@@ -644,4 +905,26 @@ public class ExcelExportServiceImpl implements ExcelExportService {
         style.setAlignment(HorizontalAlignment.RIGHT);
         return style;
     }
+
+    private Workbook getOrCreateWorkbook(org.springframework.web.multipart.MultipartFile templateFile) {
+        if (templateFile != null && !templateFile.isEmpty()) {
+            try {
+                return WorkbookFactory.create(templateFile.getInputStream());
+            } catch (Exception e) {
+                log.warn("Không thể đọc file mẫu được tải lên, tạo file mới: {}", e.getMessage());
+            }
+        }
+        return new XSSFWorkbook();
+    }
+
+    private Sheet createUniqueSheet(Workbook workbook, String baseName) {
+        String sheetName = baseName;
+        int counter = 1;
+        while (workbook.getSheet(sheetName) != null) {
+            sheetName = baseName + " (" + counter + ")";
+            counter++;
+        }
+        return workbook.createSheet(sheetName);
+    }
 }
+

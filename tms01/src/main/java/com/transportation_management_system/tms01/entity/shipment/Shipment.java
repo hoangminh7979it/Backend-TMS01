@@ -69,8 +69,13 @@ public class Shipment extends BaseEntity {
     private Employee employee; // Lái xe phụ trách
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "co_driver_id")
+    private Employee coDriver; // Phụ xe đi cùng
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "status_enum_id")
