@@ -23,6 +23,8 @@ public class ShipmentRequest {
     private BigDecimal incurredCosts;
     private Long vehicleId;
     private Long employeeId; // Tài xế phụ trách
+    private Long coDriverId; // Phụ xe đi cùng
     private Long statusEnumId;
     private String notes;
 }
+

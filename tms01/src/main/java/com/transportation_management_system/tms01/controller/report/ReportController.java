@@ -47,9 +47,20 @@ public class ReportController {
 
     @GetMapping("/salaries/{salaryId}/export")
     public ResponseEntity<byte[]> exportSalaryById(@PathVariable Long salaryId) {
-        byte[] data = excelExportService.exportSalaryById(salaryId);
+        byte[] data = excelExportService.exportSalaryById(salaryId, null);
         return buildFileResponse(data, "Phieu_Luong_" + salaryId + ".xlsx");
     }
+
+    @PostMapping("/salaries/{salaryId}/export")
+    public ResponseEntity<byte[]> exportSalaryByIdWithTemplate(
+            @PathVariable Long salaryId,
+            @RequestParam(value = "file", required = false) org.springframework.web.multipart.MultipartFile templateFile
+    ) {
+        byte[] data = excelExportService.exportSalaryById(salaryId, templateFile);
+        String filename = (templateFile != null && !templateFile.isEmpty()) ? templateFile.getOriginalFilename() : ("Phieu_Luong_" + salaryId + ".xlsx");
+        return buildFileResponse(data, filename);
+    }
+
 
     @GetMapping("/revenues/export")
     public ResponseEntity<byte[]> exportRevenues(
@@ -60,6 +71,24 @@ public class ReportController {
         byte[] data = excelExportService.exportRevenues(vehicleId, startDate, endDate);
         return buildFileResponse(data, "Bao_Cao_Doanh_Thu_Revenues.xlsx");
     }
+
+    @GetMapping("/revenues/{revenueId}/export")
+    public ResponseEntity<byte[]> exportRevenueById(@PathVariable Long revenueId) {
+        byte[] data = excelExportService.exportRevenueById(revenueId, null);
+        return buildFileResponse(data, "Bao_Cao_Chot_Doanh_Thu_" + revenueId + ".xlsx");
+    }
+
+    @PostMapping("/revenues/{revenueId}/export")
+    public ResponseEntity<byte[]> exportRevenueByIdWithTemplate(
+            @PathVariable Long revenueId,
+            @RequestParam(value = "file", required = false) org.springframework.web.multipart.MultipartFile templateFile
+    ) {
+        byte[] data = excelExportService.exportRevenueById(revenueId, templateFile);
+        String filename = (templateFile != null && !templateFile.isEmpty()) ? templateFile.getOriginalFilename() : ("Bao_Cao_Chot_Doanh_Thu_" + revenueId + ".xlsx");
+        return buildFileResponse(data, filename);
+    }
+
+
 
     private ResponseEntity<byte[]> buildFileResponse(byte[] data, String filename) {
         return ResponseEntity.ok()

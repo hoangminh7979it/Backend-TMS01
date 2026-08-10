@@ -60,6 +60,13 @@ public class ShipmentServiceImpl implements ShipmentService {
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài xế với ID: " + request.getEmployeeId()));
         }
 
+        Employee coDriver = null;
+        if (request.getCoDriverId() != null) {
+            coDriver = employeeRepository.findByEmployeeIdAndIsDeleteFalse(request.getCoDriverId())
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phụ xe với ID: " + request.getCoDriverId()));
+        }
+
+
         StatusEnum status = null;
         if (request.getStatusEnumId() != null) {
             status = statusEnumRepository.findById(request.getStatusEnumId())
@@ -82,8 +89,10 @@ public class ShipmentServiceImpl implements ShipmentService {
                 .customer(customer)
                 .vehicle(vehicle)
                 .employee(driver)
+                .coDriver(coDriver)
                 .statusEnum(status)
                 .isDelete(false)
+
                 .createDate(LocalDateTime.now())
                 .build();
 
@@ -123,7 +132,19 @@ public class ShipmentServiceImpl implements ShipmentService {
             Employee driver = employeeRepository.findByEmployeeIdAndIsDeleteFalse(request.getEmployeeId())
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài xế với ID: " + request.getEmployeeId()));
             shipment.setEmployee(driver);
+        } else if (request.getEmployeeId() == null && request.getVehicleId() != null) {
+            // allow unsetting driver if explicitly sent as null
+            shipment.setEmployee(null);
         }
+
+        if (request.getCoDriverId() != null) {
+            Employee coDriverEntity = employeeRepository.findByEmployeeIdAndIsDeleteFalse(request.getCoDriverId())
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phụ xe với ID: " + request.getCoDriverId()));
+            shipment.setCoDriver(coDriverEntity);
+        } else {
+            shipment.setCoDriver(null);
+        }
+
 
         if (request.getStatusEnumId() != null) {
             StatusEnum status = statusEnumRepository.findById(request.getStatusEnumId())
@@ -273,6 +294,16 @@ public class ShipmentServiceImpl implements ShipmentService {
             driverPhone = s.getEmployee().getPhone();
         }
 
+        String coDriverName = null;
+        String coDriverPhone = null;
+        if (s.getCoDriver() != null) {
+            coDriverName = (s.getCoDriver().getFirstname() != null ? s.getCoDriver().getFirstname() : "") + " " +
+                           (s.getCoDriver().getLastname() != null ? s.getCoDriver().getLastname() : "");
+            coDriverName = coDriverName.trim();
+            coDriverPhone = s.getCoDriver().getPhone();
+        }
+
+
         return ShipmentResponse.builder()
                 .shipmentId(s.getShipmentId())
                 .shipmentCode(s.getShipmentCode())
@@ -295,7 +326,11 @@ public class ShipmentServiceImpl implements ShipmentService {
                 .employeeId(s.getEmployee() != null ? s.getEmployee().getEmployeeId() : null)
                 .driverName(driverName)
                 .driverPhone(driverPhone)
+                .coDriverId(s.getCoDriver() != null ? s.getCoDriver().getEmployeeId() : null)
+                .coDriverName(coDriverName)
+                .coDriverPhone(coDriverPhone)
                 .statusEnumId(s.getStatusEnum() != null ? s.getStatusEnum().getStatusEnumId() : null)
+
                 .statusEnumCode(s.getStatusEnum() != null ? s.getStatusEnum().getStatusEnumCode() : null)
                 .statusEnumName(s.getStatusEnum() != null ? s.getStatusEnum().getStatusEnumName() : null)
                 .createDate(s.getCreateDate())
