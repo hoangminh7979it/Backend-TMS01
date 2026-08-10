@@ -41,6 +41,12 @@ public class ShipmentResponse {
     private String driverName;
     private String driverPhone;
 
+    // Co-Driver Info
+    private Long coDriverId;
+    private String coDriverName;
+    private String coDriverPhone;
+
+
     // Status Info
     private Long statusEnumId;
     private String statusEnumCode;
