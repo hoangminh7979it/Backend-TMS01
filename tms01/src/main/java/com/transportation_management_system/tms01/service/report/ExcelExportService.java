@@ -10,6 +10,7 @@ public interface ExcelExportService {
 
     byte[] exportSalaryById(Long salaryId);
     byte[] exportSalaryById(Long salaryId, org.springframework.web.multipart.MultipartFile templateFile);
+    byte[] exportEmployeeSalaryById(Long salaryId);
 
     byte[] exportRevenues(Long vehicleId, String startDate, String endDate);
 

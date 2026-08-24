@@ -51,6 +51,12 @@ public class ReportController {
         return buildFileResponse(data, "Phieu_Luong_" + salaryId + ".xlsx");
     }
 
+    @GetMapping("/salaries/{salaryId}/export-employee")
+    public ResponseEntity<byte[]> exportEmployeeSalaryById(@PathVariable Long salaryId) {
+        byte[] data = excelExportService.exportEmployeeSalaryById(salaryId);
+        return buildFileResponse(data, "Phieu_Luong_Nhan_Vien_" + salaryId + ".xlsx");
+    }
+
     @PostMapping("/salaries/{salaryId}/export")
     public ResponseEntity<byte[]> exportSalaryByIdWithTemplate(
             @PathVariable Long salaryId,

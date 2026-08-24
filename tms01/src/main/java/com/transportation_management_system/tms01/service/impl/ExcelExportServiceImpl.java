@@ -279,6 +279,24 @@ public class ExcelExportServiceImpl implements ExcelExportService {
 
         List<SalaryShipment> salaryShipments = salaryShipmentRepository.findBySalaryMain_SalaryId(salaryId);
 
+        // Sắp xếp danh sách chuyến hàng theo ngày tăng dần (ưu tiên Ngày giao, sau đó Ngày nhận)
+        salaryShipments.sort((a, b) -> {
+            Shipment s1 = a.getShipment();
+            Shipment s2 = b.getShipment();
+            if (s1 == null && s2 == null) return 0;
+            if (s1 == null) return -1;
+            if (s2 == null) return 1;
+
+            java.time.LocalDateTime d1 = s1.getDeliveryDate() != null ? s1.getDeliveryDate() : s1.getDateOfReceipt();
+            java.time.LocalDateTime d2 = s2.getDeliveryDate() != null ? s2.getDeliveryDate() : s2.getDateOfReceipt();
+
+            if (d1 == null && d2 == null) return 0;
+            if (d1 == null) return -1;
+            if (d2 == null) return 1;
+
+            return d1.compareTo(d2);
+        });
+
         BigDecimal tripPct = salary.getTripSalaryPercentage() != null ? salary.getTripSalaryPercentage() : BigDecimal.ZERO;
 
         try (Workbook workbook = getOrCreateWorkbook(templateFile); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -405,6 +423,139 @@ public class ExcelExportServiceImpl implements ExcelExportService {
         } catch (Exception e) {
             log.error("Lỗi khi xuất Excel Bảng lương theo ID [{}]: ", salaryId, e);
             throw new RuntimeException("Lỗi khi xuất file Excel bảng lương: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportEmployeeSalaryById(Long salaryId) {
+        Salary salary = salaryRepository.findBySalaryIdAndIsDeleteFalse(salaryId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bảng lương với ID: " + salaryId));
+
+        List<SalaryShipment> salaryShipments = salaryShipmentRepository.findBySalaryMain_SalaryId(salaryId);
+
+        BigDecimal tripPct = salary.getTripSalaryPercentage() != null ? salary.getTripSalaryPercentage() : BigDecimal.valueOf(10);
+
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Bảng Lương Cá Nhân - " + (salary.getEmployee() != null ? salary.getEmployee().getFirstname() + " " + salary.getEmployee().getLastname() : salary.getSalaryCode()));
+
+            CellStyle titleStyle = createTitleStyle(workbook);
+            CellStyle headerStyle = createHeaderStyle(workbook);
+            CellStyle dataStyle = createDataStyle(workbook);
+            CellStyle currencyStyle = createCurrencyStyle(workbook);
+            CellStyle totalStyle = createTotalStyle(workbook);
+            CellStyle sectionStyle = createSectionStyle(workbook);
+
+            // Title
+            Row titleRow = sheet.createRow(0);
+            Cell titleCell = titleRow.createCell(0);
+            String empName = salary.getEmployee() != null ? salary.getEmployee().getFirstname() + " " + salary.getEmployee().getLastname() : "";
+            titleCell.setCellValue("BẢNG BẢO LƯƠNG NHÂN VIÊN - " + empName.toUpperCase());
+            titleCell.setCellStyle(titleStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, 2));
+
+            // Sub Header Info
+            Row infoRow1 = sheet.createRow(2);
+            infoRow1.createCell(0).setCellValue("Mã Phiếu Lương:"); infoRow1.getCell(0).setCellStyle(headerStyle);
+            infoRow1.createCell(1).setCellValue(salary.getSalaryCode() != null ? salary.getSalaryCode() : ""); infoRow1.getCell(1).setCellStyle(dataStyle);
+            infoRow1.createCell(2).setCellValue("Mã NV: " + (salary.getEmployeeCode() != null ? salary.getEmployeeCode() : "")); infoRow1.getCell(2).setCellStyle(dataStyle);
+
+            Row infoRow2 = sheet.createRow(3);
+            infoRow2.createCell(0).setCellValue("Kỳ Tính Lương:"); infoRow2.getCell(0).setCellStyle(headerStyle);
+            String period = (salary.getStartDate() != null ? salary.getStartDate().format(DATE_FORMATTER) : "") + " — " + (salary.getEndDate() != null ? salary.getEndDate().format(DATE_FORMATTER) : "");
+            infoRow2.createCell(1).setCellValue(period); infoRow2.getCell(1).setCellStyle(dataStyle);
+            infoRow2.createCell(2).setCellValue("Số Ngày Công: " + (salary.getWorkDaysCount() != null ? salary.getWorkDaysCount() : 0)); infoRow2.getCell(2).setCellStyle(dataStyle);
+
+            // Header cho Bảng Chốt 3 Cột
+            Row tableHeaderRow = sheet.createRow(5);
+            String[] headers = {"THỨ TỰ NGÀY", "NGÀY LÀM VIỆC", "LƯƠNG (VND)"};
+            for (int i = 0; i < headers.length; i++) {
+                Cell c = tableHeaderRow.createCell(i);
+                c.setCellValue(headers[i]);
+                c.setCellStyle(headerStyle);
+            }
+
+            // Gộp chuyến hàng theo NGÀY GIAO (nếu không có Ngày giao thì lấy Ngày nhận)
+            java.util.Map<LocalDate, BigDecimal> dailyRevenueMap = new java.util.LinkedHashMap<>();
+
+            for (SalaryShipment ss : salaryShipments) {
+                Shipment s = ss.getShipment();
+                if (s == null) continue;
+
+                LocalDate dateKey = null;
+                if (s.getDeliveryDate() != null) {
+                    dateKey = s.getDeliveryDate().toLocalDate();
+                } else if (s.getDateOfReceipt() != null) {
+                    dateKey = s.getDateOfReceipt().toLocalDate();
+                }
+
+                if (dateKey != null) {
+                    BigDecimal rev = s.getRevenue() != null ? s.getRevenue() : BigDecimal.ZERO;
+                    dailyRevenueMap.put(dateKey, dailyRevenueMap.getOrDefault(dateKey, BigDecimal.ZERO).add(rev));
+                }
+            }
+
+            // Đưa vào bảng 3 cột: thứ tự ngày, ngày làm việc, lương ngày đó (10% tổng cước ngày)
+            int rowIdx = 6;
+            int orderNum = 1;
+            BigDecimal totalTripSalary = BigDecimal.ZERO;
+
+            for (java.util.Map.Entry<LocalDate, BigDecimal> entry : dailyRevenueMap.entrySet()) {
+                LocalDate workDate = entry.getKey();
+                BigDecimal totalDailyRev = entry.getValue();
+
+                // Tính lương ngày = tổng cước ngày x tỷ lệ % (10%)
+                BigDecimal dailySalary = totalDailyRev.multiply(tripPct).divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
+                totalTripSalary = totalTripSalary.add(dailySalary);
+
+                Row row = sheet.createRow(rowIdx++);
+                Cell c0 = row.createCell(0); c0.setCellValue(orderNum++); c0.setCellStyle(dataStyle);
+                Cell c1 = row.createCell(1); c1.setCellValue(workDate.format(DATE_FORMATTER)); c1.setCellStyle(dataStyle);
+                Cell c2 = row.createCell(2); c2.setCellValue(dailySalary.doubleValue()); c2.setCellStyle(currencyStyle);
+            }
+
+            // Dòng Lương cứng
+            BigDecimal basicSalary = salary.getSalaryBasicCosts() != null ? salary.getSalaryBasicCosts() : BigDecimal.ZERO;
+            Row basicRow = sheet.createRow(rowIdx++);
+            Cell b0 = basicRow.createCell(0); b0.setCellValue("LƯƠNG CỨNG ĐỊNH KỲ:"); b0.setCellStyle(totalStyle);
+            basicRow.createCell(1).setCellValue(""); basicRow.getCell(1).setCellStyle(totalStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(rowIdx - 1, rowIdx - 1, 0, 1));
+
+            Cell b2 = basicRow.createCell(2);
+            b2.setCellValue(basicSalary.doubleValue());
+            b2.setCellStyle(totalStyle);
+
+            // Dòng tổng cộng lương chuyến
+            Row totalRow = sheet.createRow(rowIdx++);
+            Cell t0 = totalRow.createCell(0); t0.setCellValue("TỔNG LƯƠNG CHUYẾN:"); t0.setCellStyle(totalStyle);
+            totalRow.createCell(1).setCellValue(""); totalRow.getCell(1).setCellStyle(totalStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(rowIdx - 1, rowIdx - 1, 0, 1));
+
+            Cell t2 = totalRow.createCell(2);
+            t2.setCellValue(totalTripSalary.doubleValue());
+            t2.setCellStyle(totalStyle);
+
+            // Dòng Tổng Lương Thực Nhận (Lương cứng + Lương chuyến + Phụ cấp - Khấu trừ)
+            BigDecimal grandTotal = salary.getSalaryCosts() != null ? salary.getSalaryCosts() : basicSalary.add(totalTripSalary);
+            Row grandRow = sheet.createRow(rowIdx);
+            Cell g0 = grandRow.createCell(0); g0.setCellValue("TỔNG LƯƠNG THỰC NHẬN (CỨNG + CHUYẾN + PHỤ CẤP - KHẤU TRỪ):"); g0.setCellStyle(totalStyle);
+            grandRow.createCell(1).setCellValue(""); grandRow.getCell(1).setCellStyle(totalStyle);
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(rowIdx, rowIdx, 0, 1));
+
+            Cell g2 = grandRow.createCell(2);
+            g2.setCellValue(grandTotal.doubleValue());
+            g2.setCellStyle(totalStyle);
+
+            for (int i = 0; i <= 2; i++) sheet.autoSizeColumn(i);
+            sheet.setColumnWidth(0, 4500);
+            sheet.setColumnWidth(1, 6000);
+            sheet.setColumnWidth(2, 7500);
+
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (Exception e) {
+            log.error("Lỗi khi xuất Excel Bảng lương cho nhân viên [{}]: ", salaryId, e);
+            throw new RuntimeException("Lỗi khi xuất file Excel bảng lương cho nhân viên: " + e.getMessage());
         }
     }
 
