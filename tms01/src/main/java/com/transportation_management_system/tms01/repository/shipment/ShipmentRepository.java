@@ -25,11 +25,9 @@ public interface ShipmentRepository extends JpaRepository<Shipment, Long> {
 
     boolean existsByShipmentCode(String shipmentCode);
 
-    // === DATE RANGE QUERIES FOR PAYROLL - avoids PostgreSQL null type inference issue ===
-
-    /** Lấy chuyến của tài xế khi có cả startDate và endDate */
+    /** Lấy chuyến của tài xế hoặc phụ xe khi có cả startDate và endDate */
     @Query("SELECT s FROM Shipment s WHERE s.isDelete = false " +
-           "AND s.employee.employeeId = :employeeId " +
+           "AND (s.employee.employeeId = :employeeId OR s.coDriver.employeeId = :employeeId) " +
            "AND s.dateOfReceipt >= :startDate " +
            "AND s.dateOfReceipt <= :endDate " +
            "ORDER BY s.dateOfReceipt ASC")
@@ -39,9 +37,9 @@ public interface ShipmentRepository extends JpaRepository<Shipment, Long> {
             @Param("endDate") LocalDateTime endDate
     );
 
-    /** Lấy chuyến của tài xế khi chỉ có startDate */
+    /** Lấy chuyến của tài xế hoặc phụ xe khi chỉ có startDate */
     @Query("SELECT s FROM Shipment s WHERE s.isDelete = false " +
-           "AND s.employee.employeeId = :employeeId " +
+           "AND (s.employee.employeeId = :employeeId OR s.coDriver.employeeId = :employeeId) " +
            "AND s.dateOfReceipt >= :startDate " +
            "ORDER BY s.dateOfReceipt ASC")
     List<Shipment> findByEmployeeAndStartDate(
@@ -49,9 +47,9 @@ public interface ShipmentRepository extends JpaRepository<Shipment, Long> {
             @Param("startDate") LocalDateTime startDate
     );
 
-    /** Lấy chuyến của tài xế khi chỉ có endDate */
+    /** Lấy chuyến của tài xế hoặc phụ xe khi chỉ có endDate */
     @Query("SELECT s FROM Shipment s WHERE s.isDelete = false " +
-           "AND s.employee.employeeId = :employeeId " +
+           "AND (s.employee.employeeId = :employeeId OR s.coDriver.employeeId = :employeeId) " +
            "AND s.dateOfReceipt <= :endDate " +
            "ORDER BY s.dateOfReceipt ASC")
     List<Shipment> findByEmployeeAndEndDate(
@@ -59,9 +57,9 @@ public interface ShipmentRepository extends JpaRepository<Shipment, Long> {
             @Param("endDate") LocalDateTime endDate
     );
 
-    /** Lấy tất cả chuyến của tài xế khi không có filter ngày */
+    /** Lấy tất cả chuyến của tài xế hoặc phụ xe khi không có filter ngày */
     @Query("SELECT s FROM Shipment s WHERE s.isDelete = false " +
-           "AND s.employee.employeeId = :employeeId " +
+           "AND (s.employee.employeeId = :employeeId OR s.coDriver.employeeId = :employeeId) " +
            "ORDER BY s.dateOfReceipt ASC")
     List<Shipment> findByEmployeeId(@Param("employeeId") Long employeeId);
 }
